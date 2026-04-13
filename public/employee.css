@@ -1,0 +1,240 @@
+/* employee.css - Employee Dashboard Styles */
+
+/* Base Styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #f4f7fb 0%, #e8f0fe 100%);
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  color: #333;
+}
+
+/* Navbar */
+.navbar {
+  background: linear-gradient(135deg, #2b7cff 0%, #1e5fcc 100%);
+  color: #fff;
+  padding: 18px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(43, 124, 255, 0.3);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.navbar h2 {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 600;
+}
+
+/* Main Container */
+.container {
+  padding: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Section Cards */
+.section {
+  background: #fff;
+  padding: 30px;
+  margin-top: 25px;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.section:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+}
+
+.section h2 {
+  margin: 0 0 20px 0;
+  color: #2c3e50;
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Job Cards */
+.job-card {
+  background: linear-gradient(135deg, #f9fbff 0%, #f0f7ff 100%);
+  padding: 20px;
+  margin: 15px 0;
+  border-radius: 12px;
+  border-left: 6px solid #2b7cff;
+  box-shadow: 0 4px 16px rgba(43, 124, 255, 0.1);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.job-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #2b7cff, #4dabf7);
+}
+
+.job-card:hover {
+  transform: translateX(8px);
+  box-shadow: 0 8px 24px rgba(43, 124, 255, 0.2);
+}
+
+.job-card h3 {
+  margin: 0 0 10px 0;
+  color: #2c3e50;
+  font-size: 1.2rem;
+}
+
+.job-card p {
+  margin: 8px 0;
+  color: #666;
+}
+
+/* Buttons */
+button {
+  margin: 6px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #2b7cff 0%, #4dabf7 100%);
+  color: white;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(43, 124, 255, 0.3);
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(43, 124, 255, 0.4);
+  background: linear-gradient(135deg, #1e5fcc 0%, #3a9bf5 100%);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+#callMsg {
+  font-size: 1.1rem;
+  color: #2c3e50;
+  padding: 15px;
+  background: #e3f2fd;
+  border-radius: 8px;
+  border-left: 4px solid #2b7cff;
+}
+
+/* Call Popup */
+.callPopup {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: linear-gradient(135deg, #fff 0%, #f8fbff 100%);
+  padding: 25px;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(43, 124, 255, 0.2);
+  display: none;
+  max-width: 350px;
+  z-index: 2000;
+  animation: slideIn 0.3s ease-out;
+}
+
+.callPopup h3 {
+  margin: 0 0 15px 0;
+  color: #2b7cff;
+  font-size: 1.3rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.callPopup p {
+  margin: 0 0 20px 0;
+  color: #666;
+  line-height: 1.5;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%) translateY(50px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .container {
+    padding: 20px 15px;
+  }
+
+  .navbar {
+    padding: 15px 20px;
+  }
+
+  .navbar h2 {
+    font-size: 1.3rem;
+  }
+
+  .section {
+    padding: 20px 15px;
+  }
+
+  .job-card {
+    padding: 15px;
+  }
+
+  button {
+    padding: 10px 16px;
+    font-size: 0.9rem;
+    margin: 4px;
+  }
+
+  .callPopup {
+    bottom: 20px;
+    right: 20px;
+    left: 20px;
+    max-width: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+
+  .section h2 {
+    font-size: 1.2rem;
+  }
+}
+
+/* Status Colors */
+.status-completed {
+  color: #27ae60 !important;
+}
+
+.status-assigned {
+  color: #f39c12 !important;
+}

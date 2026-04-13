@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>User Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="user.css">
+</head>
+
+<body>
+
+  <!-- ===== NAVBAR ===== -->
+  <nav>
+    <h1>User Dashboard</h1>
+
+    <button onclick="signOut()" style="width:auto;padding:10px 20px;">
+      Sign Out
+    </button>
+  </nav>
+
+  <div class="container">
+
+    <!-- Buttons -->
+    <div style="text-align:center; margin-top:30px;">
+      <button onclick="showFeedback()">Give Feedback</button>
+      <button onclick="showComplaint()">Raise Complaint</button>
+    </div>
+
+    <!-- ===== FEEDBACK FORM ===== -->
+    <div id="feedbackForm" class="form-box" style="display:none;">
+      <h2>Feedback Form</h2>
+      <form onsubmit="submitFeedback(event)">
+        <input type="text" placeholder="Your Name" required>
+        <textarea placeholder="Write your feedback..." required></textarea>
+        <button type="submit">Submit Feedback</button>
+      </form>
+    </div>
+
+    <!-- ===== COMPLAINT FORM ===== -->
+    <div id="complaintForm" class="form-box" style="display:none;">
+      <h2>Complaint Form</h2>
+      <form onsubmit="submitComplaint(event)">
+        <input type="text" placeholder="Your Name" required>
+        <textarea placeholder="Describe your complaint..." required></textarea>
+        <button type="submit">Submit Complaint</button>
+      </form>
+    </div>
+
+  </div>
+  <script src="script.js"></script>
+</body>
+
+</html>

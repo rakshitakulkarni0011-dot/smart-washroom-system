@@ -1,0 +1,190 @@
+/* ===== RESET ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+body {
+  background: linear-gradient(120deg, #0f2027, #203a43, #2c5364);
+  min-height: 100vh;
+  color: #fff;
+}
+
+/* ===== NAVBAR ===== */
+nav {
+  width: 100%;
+  padding: 15px 40px;
+  background: #111;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+}
+
+nav h1 {
+  color: #00e6e6;
+  font-size: 26px;
+}
+
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 25px;
+}
+
+nav ul li a {
+  text-decoration: none;
+  color: white;
+  font-size: 18px;
+  transition: .3s;
+}
+
+nav ul li a:hover {
+  color: #00e6e6;
+}
+
+/* ===== MAIN CONTAINER ===== */
+.container {
+  width: 90%;
+  max-width: 1200px;
+  margin: auto;
+  padding: 40px 0;
+}
+
+/* ===== CARD DESIGN ===== */
+.card {
+  background: #ffffff;
+  color: #333;
+  border-radius: 15px;
+  padding: 30px;
+  margin: 20px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  transition: .3s;
+}
+
+.card:hover {
+  transform: translateY(-8px);
+}
+
+/* ===== GRID DASHBOARD ===== */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 25px;
+}
+
+/* ===== FORM DESIGN ===== */
+.form-box {
+  width: 400px;
+  margin: auto;
+  background: white;
+  color: #333;
+  padding: 40px;
+  border-radius: 15px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.form-box h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+input,
+textarea {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  background: #00c6ff;
+  border: none;
+  color: white;
+  font-size: 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: .3s;
+}
+
+button:hover {
+  background: #0072ff;
+}
+
+/* ===== CHART BOX ===== */
+.chart {
+  height: 300px;
+}
+
+/* ===== FOOTER ===== */
+footer {
+  text-align: center;
+  padding: 20px;
+  background: #111;
+  margin-top: 40px;
+}
+
+/* ================================================= */
+/* 📱 MOBILE RESPONSIVE (phones < 600px) */
+/* ================================================= */
+@media(max-width:600px) {
+
+  nav {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+
+  nav ul {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-box {
+    width: 90%;
+    padding: 25px;
+  }
+
+  .card {
+    margin: 10px 0;
+  }
+
+  nav h1 {
+    font-size: 22px;
+  }
+}
+
+/* ================================================= */
+/* 📱 TABLET RESPONSIVE (600px - 900px) */
+/* ================================================= */
+@media(min-width:601px) and (max-width:900px) {
+
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .form-box {
+    width: 70%;
+  }
+}
+
+/* ================================================= */
+/* 💻 LAPTOP / SMALL DESKTOP (900px - 1200px) */
+/* ================================================= */
+@media(min-width:901px) and (max-width:1200px) {
+
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

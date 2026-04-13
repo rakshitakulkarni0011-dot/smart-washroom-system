@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Washroom System</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="index.css">
+</head>
+
+<body>
+
+  <h1>🚻 Smart Washroom Monitoring System</h1>
+
+  <div class="center">
+    <button class="bigBtn" onclick="showLogin()">🔐 Login</button>
+    <button class="bigBtn" onclick="showSignup()">📝 Sign Up</button>
+  </div>
+
+  <!-- LOGIN -->
+  <div id="loginBox" class="card formBox" style="display:none;">
+    <h2>🔐 Login</h2>
+
+    <div id="loginError" class="error"></div>
+
+    <input id="loginPhone" type="text" placeholder="📱 Mobile Number" maxlength="10" minlength="10"
+      oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+    <input id="loginPass" type="password" placeholder="🔒 Password">
+
+    <select id="loginRole">
+      <option value="User">User</option>
+      <option value="Employee">Employee</option>
+      <option value="Admin">Admin</option>
+    </select>
+
+    <div id="loginLoading" style="display:none;">Loading...</div>
+
+    <button onclick="login()">Login</button>
+    <button onclick="hideForms()">Back</button>
+  </div>
+
+  <!-- SIGNUP -->
+  <div id="signupBox" class="card formBox" style="display:none;">
+    <h2>📝 Sign Up</h2>
+
+    <div id="signupError" class="error"></div>
+
+    <input id="name" placeholder="Name">
+    <input id="phone" type="text" placeholder="Mobile Number" maxlength="10" minlength="10"
+      oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+    <input id="pass" type="password" placeholder="Password">
+
+    <select id="signupRole">
+      <option value="User">User</option>
+      <option value="Employee">Employee</option>
+      <option value="Admin">Admin</option>
+    </select>
+
+    <div id="signupLoading" style="display:none;">Creating...</div>
+
+    <button onclick="signup()">Create Account</button>
+    <button onclick="hideForms()">Back</button>
+  </div>
+
+  <script>
+    const API = "http://localhost:5000/api";
+
+    function showLogin() {
+      document.getElementById("loginBox").style.display = "block";
+      document.getElementById("signupBox").style.display = "none";
+    }
+
+    function showSignup() {
+      document.getElementById("signupBox").style.display = "block";
+      document.getElementById("loginBox").style.display = "none";
+    }
+
+    function hideForms() {
+      document.getElementById("loginBox").style.display = "none";
+      document.getElementById("signupBox").style.display = "none";
+    }
+
+    // ================= SIGNUP =================
+    async function signup() {
+      const data = {
+        name: document.getElementById("name").value,
+        phone: document.getElementById("phone").value,   // ✔ FIXED
+        password: document.getElementById("pass").value,
+        role: document.getElementById("signupRole").value
+      };
+
+      try {
+        const res = await fetch(`${API}/signup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+
+        if (!res.ok) {
+          alert(result.error || "Signup failed");
+          return;
+        }
+
+        alert("Signup Success");
+        redirect(result.role);
+
+      } catch (err) {
+        alert("Server error");
+      }
+    }
+
+    // ================= LOGIN =================
+    async function login() {
+      const data = {
+        phone: document.getElementById("loginPhone").value,
+        password: document.getElementById("loginPass").value
+      };
+
+      const selectedRole = document.getElementById("loginRole").value;
+
+      try {
+        const res = await fetch(`${API}/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+
+        if (!res.ok) {
+          alert(result.error || "Login failed");
+          return;
+        }
+
+        if (result.role !== selectedRole) {
+          alert("Wrong role selected");
+          return;
+        }
+
+        redirect(result.role);
+
+      } catch (err) {
+        alert("Server error");
+      }
+    }
+
+    // ================= REDIRECT =================
+    function redirect(role) {
+      if (role === "Admin") window.location.href = "admin.html";
+      else if (role === "Employee") window.location.href = "employee.html";
+      else window.location.href = "user.html";
+    }
+  </script>
+
+</body>
+
+</html>

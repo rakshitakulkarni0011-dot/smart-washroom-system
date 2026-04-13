@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Washroom Admin Panel</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="admin.css">
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+</head>
+
+<body>
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <h2>Smart Washroom Admin Dashboard</h2>
+    <button class="logout" onclick="logout()" style="width:auto;padding:10px 20px;">Sign Out</button>
+  </div>
+
+  <div class="container">
+
+    <!-- SENSOR STATUS -->
+    <div class="card">
+      <h3>Sensor Status</h3>
+      <p>Temperature: <span id="tStatus" class="ok">Working</span></p>
+      <p>Humidity: <span id="hStatus" class="ok">Working</span></p>
+      <p>IR Sensor: <span id="irStatus" class="ok">Working</span></p>
+      <p>MQ135 Sensor: <span id="mqStatus" class="ok">Working</span></p>
+    </div>
+
+    <!-- LIVE DATA -->
+    <div class="card">
+      <h3>Live Readings</h3>
+      <p>Temperature: <span class="big" id="temp">--</span> °C</p>
+      <p>Humidity: <span class="big" id="hum">--</span> %</p>
+      <p>Users (IR): <span class="big" id="users">--</span></p>
+      <p>Cleanliness: <span class="big" id="clean">--</span>/100</p>
+    </div>
+
+    <!-- MQ135 AIR QUALITY -->
+    <div class="card">
+      <h3>Air Quality (MQ135)</h3>
+      <p class="mq-box">Gas Level: <span id="mq">--</span> PPM</p>
+      <p>Status: <span id="airStatus" class="ok">Good</span></p>
+    </div>
+
+    <!-- EMPLOYEE PERFORMANCE -->
+    <div class="card">
+      <h3>Employee Performance</h3>
+      <div id="empList"></div>
+    </div>
+
+    <!-- GRAPHS -->
+    <div class="card">
+      <h3>Temperature Graph</h3>
+      <canvas id="tempChart"></canvas>
+    </div>
+
+    <div class="card">
+      <h3>Humidity Graph</h3>
+      <canvas id="humChart"></canvas>
+    </div>
+
+    <div class="card">
+      <h3>Users Graph</h3>
+      <canvas id="userChart"></canvas>
+    </div>
+
+  </div>
+
+  <script>
+
+    const socket = io("http://localhost:5000");
+
+    socket.on("job-update", (job) => {
+      console.log("Dashboard Updated:", job);
+      loadDashboard(); // reload charts / data
+    });
+
+    async function loadDashboard() {
+      location.reload(); // simple method for now
+    }
+
+    async function loadJobs() {
+      const res = await fetch("http://localhost:5000/jobs");
+      const data = await res.json();
+
+      let html = "";
+      data.jobs.forEach(j => {
+        html += `<p>${j.location} - ${j.employee} - ${j.status}</p>`;
+      });
+
+      document.getElementById("jobs").innerHTML = html;
+    }
+    loadJobs();
+
+    /* =========================
+       REAL API (ESP8266 / SERVER)
+       ========================= */
+    async function fetchData() {
+      try {
+
+        // 👉 Replace this with your ESP8266 API
+        let res = await fetch("http://your-device-ip/data");
+        let data = await res.json();
+
+        // SENSOR VALUES
+        document.getElementById("temp").innerText = data.temp;
+        document.getElementById("hum").innerText = data.hum;
+        document.getElementById("users").innerText = data.users;
+        document.getElementById("clean").innerText = data.clean;
+
+        // MQ135
+        document.getElementById("mq").innerText = data.mq135;
+
+        if (data.mq135 > 400) {
+          document.getElementById("airStatus").innerText = "Bad Air";
+          document.getElementById("airStatus").className = "bad";
+        } else {
+          document.getElementById("airStatus").innerText = "Good";
+          document.getElementById("airStatus").className = "ok";
+        }
+
+        // SENSOR FAILURE CHECK
+        checkSensorStatus(data);
+
+        // EMPLOYEE DATA
+        renderEmployees(data.employees);
+
+        // UPDATE CHARTS
+        updateCharts(data);
+
+      } catch (err) {
+        console.log("API Error:", err);
+      }
+    }
+
+    /* =========================
+       SENSOR FAILURE DETECTION
+    ========================= */
+    function checkSensorStatus(data) {
+
+      document.getElementById("tStatus").className =
+        data.temp ? "ok" : "bad";
+
+      document.getElementById("hStatus").className =
+        data.hum ? "ok" : "bad";
+
+      document.getElementById("irStatus").className =
+        data.users >= 0 ? "ok" : "bad";
+
+      document.getElementById("mqStatus").className =
+        data.mq135 ? "ok" : "bad";
+    }
+
+    /* =========================
+       EMPLOYEE PERFORMANCE UI
+    ========================= */
+    function renderEmployees(list) {
+      let box = document.getElementById("empList");
+      box.innerHTML = "";
+
+      list.forEach(emp => {
+        box.innerHTML += `
+      <p>${emp.name} - ${emp.performance}%</p>
+      <div style="background:#ddd;border-radius:5px">
+        <div style="width:${emp.performance}%;
+                    background:green;
+                    color:white;
+                    padding:3px;
+                    border-radius:5px">
+          ${emp.performance}%
+        </div>
+      </div>
+    `;
+      });
+    }
+
+    /* =========================
+       CHARTS (LIVE)
+    ========================= */
+
+    const labels = ["T1", "T2", "T3", "T4", "T5"];
+
+    let tempChart = new Chart(document.getElementById("tempChart"), {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{ label: "Temp", data: [], borderColor: "red" }]
+      }
+    });
+
+    let humChart = new Chart(document.getElementById("humChart"), {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{ label: "Humidity", data: [], borderColor: "blue" }]
+      }
+    });
+
+    let userChart = new Chart(document.getElementById("userChart"), {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [{ label: "Users", data: [], backgroundColor: "green" }]
+      }
+    });
+
+    function updateCharts(data) {
+      tempChart.data.datasets[0].data = data.tempArray;
+      humChart.data.datasets[0].data = data.humArray;
+      userChart.data.datasets[0].data = data.userArray;
+
+      tempChart.update();
+      humChart.update();
+      userChart.update();
+    }
+
+    /* =========================
+       AUTO REFRESH
+    ========================= */
+    setInterval(fetchData, 3000);
+
+    /* =========================
+       LOGOUT
+    ========================= */
+    function logout() {
+      // redirect to login page
+      window.location.href = "index.html";
+    }
+
+  </script>
+
+</body>
+
+</html>
