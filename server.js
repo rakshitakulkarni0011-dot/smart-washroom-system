@@ -6,8 +6,8 @@ const path = require("path");
 const http = require("http");
 const { Server } = require("socket.io");
 
-// MODELS
-const User = require("./models/User.js");
+const User = require("./models/User");
+const Sensor = require("./models/Sensor");
 
 const app = express();
 const server = http.createServer(app);
@@ -18,40 +18,25 @@ const io = new Server(server, {
 });
 
 // ================= MIDDLEWARE =================
-app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type"]
-}));
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// serve frontend
 app.use(express.static(path.join(__dirname, "public")));
 
 // ================= DB CONNECT =================
 mongoose.connect("mongodb://127.0.0.1:27017/smartwashroom")
   .then(() => console.log("✅ MongoDB Connected"))
-  .catch(err => console.log(err));
+  .catch(err => console.log("DB Error:", err));
 
 // ================= MODELS =================
-
-// SENSOR
-const Sensor = mongoose.model("Sensor", new mongoose.Schema({
-  temperature: Number,
-  humidity: Number,
-  gas: Number,
-  people: Number,
-  cleanliness: Number,
-  time: { type: Date, default: Date.now }
-}));
-
-// EMPLOYEE
 const Employee = mongoose.model("Employee", new mongoose.Schema({
   name: String,
   phone: String,
   status: { type: String, default: "Free" }
 }));
 
-// JOB
 const Job = mongoose.model("Job", new mongoose.Schema({
   employee: String,
   employeePhone: String,
@@ -76,8 +61,7 @@ const Complaint = mongoose.model("Complaint", new mongoose.Schema({
 
 // ================= SEED DATA =================
 async function seedData() {
-  const empCount = await Employee.countDocuments();
-  if (empCount === 0) {
+  if (await Employee.countDocuments() === 0) {
     await Employee.insertMany([
       { name: "Rahul Sharma", phone: "9876543210" },
       { name: "Amit Patel", phone: "9123456780" },
@@ -86,8 +70,7 @@ async function seedData() {
     console.log("👷 Employees Seeded");
   }
 
-  const admin = await User.findOne({ role: "Admin" });
-  if (!admin) {
+  if (!await User.findOne({ role: "Admin" })) {
     await User.create({
       name: "Super Admin",
       phone: "9999999999",
@@ -99,13 +82,20 @@ async function seedData() {
 }
 seedData();
 
-// ================= SOCKET =================
-io.on("connection", (socket) => {
+// ================= SOCKET CONNECTION =================
+io.on("connection", async (socket) => {
   console.log("🔌 Client connected:", socket.id);
+
+  // send latest sensor data instantly
+  const latest = await Sensor.findOne().sort({ createdAt: -1 });
+  if (latest) socket.emit("sensor-update", latest);
+
   socket.on("disconnect", () => console.log("❌ Disconnected"));
 });
 
-// ================= AUTH =================
+// ===================================================
+// 🔐 AUTH ROUTES
+// ===================================================
 app.post("/api/signup", async (req, res) => {
   try {
     const { name, phone, password, role } = req.body;
@@ -117,7 +107,9 @@ app.post("/api/signup", async (req, res) => {
 
     const user = await User.create({ name, phone, password, role });
     res.json({ message: "Signup success", role: user.role });
-  } catch (err) { res.status(500).json({ error: "Server error" }); }
+  } catch {
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 app.post("/api/login", async (req, res) => {
@@ -126,43 +118,51 @@ app.post("/api/login", async (req, res) => {
     const user = await User.findOne({ phone });
     if (!user || user.password !== password)
       return res.status(401).json({ error: "Invalid credentials" });
-
     res.json(user);
-  } catch { res.status(500).json({ error: "Server error" }); }
+  } catch {
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
-// ================= SENSOR =================
+// ===================================================
+// 📡 SENSOR ROUTES (ESP8266)
+// ===================================================
+
+// ESP sends data
 app.post("/api/sensor", async (req, res) => {
   try {
-    const data = await Sensor.create(req.body);
+    const { temperature, humidity, gas, peopleCount, cleanlinessScore } = req.body;
 
-    const activeJob = await Job.findOne({
-      status: { $in: ["pending", "inprogress"] }
-    });
-    if (activeJob) return res.json({ success: true });
+    if ([temperature, humidity, gas, peopleCount, cleanlinessScore].includes(undefined))
+      return res.status(400).json({ error: "Missing sensor fields" });
 
-    if (data.cleanliness < 60 || data.gas > 400) {
-      const emp = await Employee.findOne({ status: "Free" });
-      if (!emp) return res.json({ success: true });
+    const saved = await Sensor.create(req.body);
 
-      const job = await Job.create({
-        employee: emp.name,
-        employeePhone: emp.phone,
-        location: "Washroom A",
-        priority: data.gas > 400 ? "HIGH" : "NORMAL"
-      });
+    // 🔴 live push to dashboard
+    io.emit("sensor-update", saved);
 
-      emp.status = "Busy";
-      await emp.save();
-
-      io.emit("job-update", job);
-    }
-
-    res.json({ success: true });
-  } catch { res.status(500).json({ error: "Server error" }); }
+    res.json({ message: "Sensor saved" });
+  } catch (err) {
+    console.log("Sensor Error:", err);
+    res.status(500).json({ error: "Sensor save failed" });
+  }
 });
 
-// ================= GET DATA =================
+// latest reading
+app.get("/api/sensor/latest", async (req, res) => {
+  const latest = await Sensor.findOne().sort({ createdAt: -1 });
+  res.json(latest);
+});
+
+// history for charts
+app.get("/api/sensor/history", async (req, res) => {
+  const history = await Sensor.find().sort({ createdAt: -1 }).limit(15);
+  res.json(history.reverse());
+});
+
+// ===================================================
+// 📊 DATA ROUTES
+// ===================================================
 app.get("/api/users", async (req, res) => {
   res.json(await User.find({}, { password: 0 }));
 });
@@ -175,35 +175,30 @@ app.get("/api/jobs", async (req, res) => {
   res.json(await Job.find().sort({ createdAt: -1 }));
 });
 
-// ================= FEEDBACK =================
-app.get("/api/feedback", async (req, res) => {
-  const data = await Feedback.find().sort({ date: -1 });
-  res.json(data);
-});
-
+// ===================================================
+// 💬 FEEDBACK & COMPLAINT
+// ===================================================
 app.post("/api/feedback", async (req, res) => {
-  try {
-    await Feedback.create(req.body);
-    res.json({ message: "Feedback saved successfully ✅" });
-  } catch {
-    res.status(500).json({ message: "Error saving feedback" });
-  }
+  await Feedback.create(req.body);
+  res.json({ message: "Feedback saved" });
 });
 
-// ================= COMPLAINT =================
+app.get("/api/feedback", async (req, res) => {
+  res.json(await Feedback.find().sort({ date: -1 }));
+});
+
 app.post("/api/complaint", async (req, res) => {
-  try {
-    await Complaint.create(req.body);
-    res.json({ message: "Complaint submitted 🚨" });
-  } catch {
-    res.status(500).json({ message: "Error saving complaint" });
-  }
+  await Complaint.create(req.body);
+  res.json({ message: "Complaint saved" });
 });
 
-// ⭐⭐⭐ STATIC LAST (MOST IMPORTANT FIX)
-app.use(express.static(path.join(__dirname, "public")));
+// ================= GLOBAL ERROR HANDLER =================
+app.use((err, req, res, next) => {
+  console.error("🔥 Global Error:", err);
+  res.status(500).json({ error: "Something broke!" });
+});
 
-// ================= SERVER =================
+// ================= START SERVER =================
 server.listen(5000, () => {
   console.log("🚀 Server running → http://localhost:5000");
 });

@@ -3,237 +3,192 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Smart Washroom Admin Panel</title>
+  <title>Smart Washroom Admin</title>
+
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="admin.css">
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+  <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+  <style>
+    body {
+      background: #0f172a;
+      color: white;
+      font-family: Arial
+    }
 
+    .container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      padding: 20px
+    }
+
+    .card {
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 12px
+    }
+
+    .big {
+      font-size: 30px;
+      font-weight: bold
+    }
+
+    .ok {
+      color: #22c55e
+    }
+
+    .bad {
+      color: #ef4444
+    }
+
+    .warn {
+      color: #f59e0b
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      padding: 15px;
+      background: #020617
+    }
+
+    .statusDot {
+      height: 10px;
+      width: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 8px
+    }
+  </style>
 </head>
 
 <body>
 
-  <!-- TOP BAR -->
   <div class="topbar">
-    <h2>Smart Washroom Admin Dashboard</h2>
-    <button class="logout" onclick="logout()" style="width:auto;padding:10px 20px;">Sign Out</button>
+    <h2>Admin Dashboard</h2>
+    <div>
+      <span class="statusDot" id="serverDot"></span>
+      <span id="serverStatus">Connecting...</span>
+      <button onclick="logout()">Logout</button>
+    </div>
   </div>
 
   <div class="container">
 
-    <!-- SENSOR STATUS -->
     <div class="card">
-      <h3>Sensor Status</h3>
-      <p>Temperature: <span id="tStatus" class="ok">Working</span></p>
-      <p>Humidity: <span id="hStatus" class="ok">Working</span></p>
-      <p>IR Sensor: <span id="irStatus" class="ok">Working</span></p>
-      <p>MQ135 Sensor: <span id="mqStatus" class="ok">Working</span></p>
+      <h3>Sensor Health</h3>
+      <p>Temperature: <span id="tStatus">--</span></p>
+      <p>Humidity: <span id="hStatus">--</span></p>
+      <p>IR Sensor: <span id="irStatus">--</span></p>
+      <p>MQ135 Gas: <span id="mqStatus">--</span></p>
     </div>
 
-    <!-- LIVE DATA -->
     <div class="card">
       <h3>Live Readings</h3>
-      <p>Temperature: <span class="big" id="temp">--</span> °C</p>
-      <p>Humidity: <span class="big" id="hum">--</span> %</p>
-      <p>Users (IR): <span class="big" id="users">--</span></p>
-      <p>Cleanliness: <span class="big" id="clean">--</span>/100</p>
-    </div>
-
-    <!-- MQ135 AIR QUALITY -->
-    <div class="card">
-      <h3>Air Quality (MQ135)</h3>
-      <p class="mq-box">Gas Level: <span id="mq">--</span> PPM</p>
-      <p>Status: <span id="airStatus" class="ok">Good</span></p>
-    </div>
-
-    <!-- EMPLOYEE PERFORMANCE -->
-    <div class="card">
-      <h3>Employee Performance</h3>
-      <div id="empList"></div>
-    </div>
-
-    <!-- GRAPHS -->
-    <div class="card">
-      <h3>Temperature Graph</h3>
-      <canvas id="tempChart"></canvas>
+      <p>🌡 Temp: <span class="big" id="temp">--</span> °C</p>
+      <p>💧 Humidity: <span class="big" id="hum">--</span> %</p>
+      <p>🚶 Users: <span class="big" id="users">--</span></p>
+      <p>🧹 Cleanliness: <span class="big" id="clean">--</span>/100</p>
     </div>
 
     <div class="card">
-      <h3>Humidity Graph</h3>
-      <canvas id="humChart"></canvas>
+      <h3>Air Quality</h3>
+      <p>Gas Level: <span class="big" id="mq">--</span> ppm</p>
+      <p>Status: <span id="airStatus">--</span></p>
     </div>
 
     <div class="card">
-      <h3>Users Graph</h3>
-      <canvas id="userChart"></canvas>
+      <h3>Employees</h3>
+      <div id="empList">Loading...</div>
+    </div>
+
+    <div class="card">
+      <h3>Temperature</h3><canvas id="tempChart"></canvas>
+    </div>
+    <div class="card">
+      <h3>Humidity</h3><canvas id="humChart"></canvas>
+    </div>
+    <div class="card">
+      <h3>Users</h3><canvas id="userChart"></canvas>
     </div>
 
   </div>
 
   <script>
+    const socket = io(); // auto connect same server
 
-    const socket = io("http://localhost:5000");
+    // ELEMENTS
+    const tempEl = document.getElementById("temp");
+    const humEl = document.getElementById("hum");
+    const usersEl = document.getElementById("users");
+    const cleanEl = document.getElementById("clean");
+    const mqEl = document.getElementById("mq");
+    const empList = document.getElementById("empList");
 
-    socket.on("job-update", (job) => {
-      console.log("Dashboard Updated:", job);
-      loadDashboard(); // reload charts / data
+    const tStatus = document.getElementById("tStatus");
+    const hStatus = document.getElementById("hStatus");
+    const irStatus = document.getElementById("irStatus");
+    const mqStatus = document.getElementById("mqStatus");
+    const airStatus = document.getElementById("airStatus");
+
+    // SERVER STATUS
+    socket.on("connect", () => { serverDot.style.background = "#22c55e"; serverStatus.innerText = "Live" });
+    socket.on("disconnect", () => { serverDot.style.background = "#ef4444"; serverStatus.innerText = "Disconnected" });
+
+    // LIVE SENSOR UPDATE
+    socket.on("sensor-update", updateUI);
+
+    function updateUI(d) {
+      if (!d) return;
+      tempEl.innerText = d.temperature ?? "--";
+      humEl.innerText = d.humidity ?? "--";
+      usersEl.innerText = d.peopleCount ?? "--";
+      cleanEl.innerText = d.cleanlinessScore ?? "--";
+      mqEl.innerText = d.gas ?? "--";
+
+      // air quality
+      if (d.gas > 400) { airStatus.innerText = "Bad"; airStatus.className = "bad"; }
+      else if (d.gas > 250) { airStatus.innerText = "Moderate"; airStatus.className = "warn"; }
+      else { airStatus.innerText = "Good"; airStatus.className = "ok"; }
+
+      // sensor health
+      tStatus.innerText = d.temperature != null ? "Working" : "Offline";
+      hStatus.innerText = d.humidity != null ? "Working" : "Offline";
+      irStatus.innerText = d.peopleCount != null ? "Working" : "Offline";
+      mqStatus.innerText = d.gas != null ? "Working" : "Offline";
+    }
+
+    // FETCH LATEST
+    fetch("/api/sensor/latest").then(r => r.json()).then(updateUI);
+
+    // EMPLOYEES
+    fetch("/api/employees").then(r => r.json()).then(data => {
+      empList.innerHTML = data.map(e => `<p>${e.name} (${e.status})</p>`).join("");
     });
 
-    async function loadDashboard() {
-      location.reload(); // simple method for now
-    }
-
-    async function loadJobs() {
-      const res = await fetch("http://localhost:5000/jobs");
-      const data = await res.json();
-
-      let html = "";
-      data.jobs.forEach(j => {
-        html += `<p>${j.location} - ${j.employee} - ${j.status}</p>`;
-      });
-
-      document.getElementById("jobs").innerHTML = html;
-    }
-    loadJobs();
-
-    /* =========================
-       REAL API (ESP8266 / SERVER)
-       ========================= */
-    async function fetchData() {
-      try {
-
-        // 👉 Replace this with your ESP8266 API
-        let res = await fetch("http://your-device-ip/data");
-        let data = await res.json();
-
-        // SENSOR VALUES
-        document.getElementById("temp").innerText = data.temp;
-        document.getElementById("hum").innerText = data.hum;
-        document.getElementById("users").innerText = data.users;
-        document.getElementById("clean").innerText = data.clean;
-
-        // MQ135
-        document.getElementById("mq").innerText = data.mq135;
-
-        if (data.mq135 > 400) {
-          document.getElementById("airStatus").innerText = "Bad Air";
-          document.getElementById("airStatus").className = "bad";
-        } else {
-          document.getElementById("airStatus").innerText = "Good";
-          document.getElementById("airStatus").className = "ok";
-        }
-
-        // SENSOR FAILURE CHECK
-        checkSensorStatus(data);
-
-        // EMPLOYEE DATA
-        renderEmployees(data.employees);
-
-        // UPDATE CHARTS
-        updateCharts(data);
-
-      } catch (err) {
-        console.log("API Error:", err);
-      }
-    }
-
-    /* =========================
-       SENSOR FAILURE DETECTION
-    ========================= */
-    function checkSensorStatus(data) {
-
-      document.getElementById("tStatus").className =
-        data.temp ? "ok" : "bad";
-
-      document.getElementById("hStatus").className =
-        data.hum ? "ok" : "bad";
-
-      document.getElementById("irStatus").className =
-        data.users >= 0 ? "ok" : "bad";
-
-      document.getElementById("mqStatus").className =
-        data.mq135 ? "ok" : "bad";
-    }
-
-    /* =========================
-       EMPLOYEE PERFORMANCE UI
-    ========================= */
-    function renderEmployees(list) {
-      let box = document.getElementById("empList");
-      box.innerHTML = "";
-
-      list.forEach(emp => {
-        box.innerHTML += `
-      <p>${emp.name} - ${emp.performance}%</p>
-      <div style="background:#ddd;border-radius:5px">
-        <div style="width:${emp.performance}%;
-                    background:green;
-                    color:white;
-                    padding:3px;
-                    border-radius:5px">
-          ${emp.performance}%
-        </div>
-      </div>
-    `;
-      });
-    }
-
-    /* =========================
-       CHARTS (LIVE)
-    ========================= */
-
-    const labels = ["T1", "T2", "T3", "T4", "T5"];
-
-    let tempChart = new Chart(document.getElementById("tempChart"), {
+    // CHARTS
+    const createChart = id => new Chart(document.getElementById(id), {
       type: "line",
-      data: {
-        labels,
-        datasets: [{ label: "Temp", data: [], borderColor: "red" }]
-      }
+      data: { labels: [], datasets: [{ data: [] }] }
+    });
+    const tempChart = createChart("tempChart");
+    const humChart = createChart("humChart");
+    const userChart = createChart("userChart");
+
+    fetch("/api/sensor/history").then(r => r.json()).then(h => {
+      const labels = h.map(x => new Date(x.createdAt).toLocaleTimeString());
+      tempChart.data.labels = humChart.data.labels = userChart.data.labels = labels;
+      tempChart.data.datasets[0].data = h.map(x => x.temperature);
+      humChart.data.datasets[0].data = h.map(x => x.humidity);
+      userChart.data.datasets[0].data = h.map(x => x.peopleCount);
+      tempChart.update(); humChart.update(); userChart.update();
     });
 
-    let humChart = new Chart(document.getElementById("humChart"), {
-      type: "line",
-      data: {
-        labels,
-        datasets: [{ label: "Humidity", data: [], borderColor: "blue" }]
-      }
-    });
-
-    let userChart = new Chart(document.getElementById("userChart"), {
-      type: "bar",
-      data: {
-        labels,
-        datasets: [{ label: "Users", data: [], backgroundColor: "green" }]
-      }
-    });
-
-    function updateCharts(data) {
-      tempChart.data.datasets[0].data = data.tempArray;
-      humChart.data.datasets[0].data = data.humArray;
-      userChart.data.datasets[0].data = data.userArray;
-
-      tempChart.update();
-      humChart.update();
-      userChart.update();
-    }
-
-    /* =========================
-       AUTO REFRESH
-    ========================= */
-    setInterval(fetchData, 3000);
-
-    /* =========================
-       LOGOUT
-    ========================= */
-    function logout() {
-      // redirect to login page
-      window.location.href = "index.html";
-    }
-
+    function logout() { location = "index.html"; }
   </script>
-
 </body>
 
 </html>
