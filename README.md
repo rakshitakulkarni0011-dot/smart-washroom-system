@@ -1,14 +1,33 @@
-# 🚽 Smart Washroom System
+# 🚽 Smart Washroom Monitoring System
 
-IoT based washroom monitoring system using ESP8266 + Web App.
+An IoT + Web based system to monitor washroom usage, cleanliness and complaints in real-time.
 
-## Features
-- User Login & Dashboard
+## 👩‍💻 Modules
+- User Dashboard
+- Employee Dashboard
 - Admin Panel
-- Real-time Sensor Data
-- Complaint System
-- MongoDB Database
-- Socket.io Live Updates
+- Complaint Management
+- Live Sensor Monitoring
 
-## Tech Stack
-Node.js • Express • MongoDB • Socket.io • ESP8266
+## 🔌 Hardware
+- ESP8266 NodeMCU
+- Ultrasonic Sensor
+- Gas Sensor
+- Servo Motor
+
+## 💻 Tech Stack
+- Node.js + Express
+- MongoDB
+- Socket.io
+- HTML/CSS/JS
+
+## ▶️ How to Run Project
+
+1. Install dependencies
+   npm install
+
+2. Start server
+   node server.js
+
+3. Open in browser
+   http://localhost:5000
