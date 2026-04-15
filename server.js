@@ -3,7 +3,6 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const http = require("http");
-const path = require("path");
 const { Server } = require("socket.io");
 
 // ===== MODELS =====
@@ -21,21 +20,23 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
 
-// ================= MONGODB =================
-mongoose.connect("mongodb://127.0.0.1:27017/smart_washroom")
-  .then(() => console.log("MongoDB Connected"))
-  .catch(err => console.log(err));
+
+// =====================================================
+// 🌍 MONGODB ATLAS CONNECTION (RENDER READY)
+// =====================================================
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB Atlas Connected ✅"))
+  .catch(err => console.log("Mongo Error:", err));
 
 
 // =====================================================
-// 🔐 AUTH API (LOGIN / SIGNUP)
+// 🔐 AUTH API
 // =====================================================
-
 app.post("/api/signup", async (req, res) => {
   try {
     const user = await User.create(req.body);
     res.json(user);
-  } catch (err) {
+  } catch {
     res.status(400).json({ error: "User already exists" });
   }
 });
@@ -50,11 +51,6 @@ app.post("/api/login", async (req, res) => {
 // =====================================================
 // 📡 ESP8266 SENSOR API
 // =====================================================
-// ESP URL → /save_data?temp=..&hum=..&gas=..&users=..&score=..
-
-
-// ================= ESP8266 DATA API =================
-// ESP sends GET request with query parameters
 app.get("/save_data", async (req, res) => {
   try {
     const temp = parseFloat(req.query.temp);
@@ -63,9 +59,9 @@ app.get("/save_data", async (req, res) => {
     const users = parseInt(req.query.users);
     const score = parseFloat(req.query.score);
 
-    console.log("📥 Incoming Sensor Data:", req.query);
+    console.log("📥 Sensor Data:", req.query);
 
-    const newData = new Sensor({
+    const data = await Sensor.create({
       temperature: temp,
       humidity: hum,
       gas: gas,
@@ -73,15 +69,13 @@ app.get("/save_data", async (req, res) => {
       cleanlinessScore: score
     });
 
-    await newData.save();
+    // 🔴 realtime update admin dashboard
+    io.emit("sensorUpdate", data);
 
-    // 🔴 Send realtime update to admin dashboard
-    io.emit("sensorUpdate", newData);
-
-    res.send("Data Saved Successfully ✅");
+    res.send("Saved ✅");
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Error saving data");
+    console.log(err);
+    res.status(500).send("Error");
   }
 });
 
@@ -89,11 +83,9 @@ app.get("/save_data", async (req, res) => {
 // =====================================================
 // 📊 ADMIN DASHBOARD DATA
 // =====================================================
-
 app.get("/dashboard-data", async (req, res) => {
   const latest = await Sensor.find().sort({ date: -1 }).limit(1);
   const sensors = await Sensor.find().sort({ date: -1 }).limit(5);
-
   const employees = await Employee.find();
 
   res.json({
@@ -119,7 +111,6 @@ app.get("/dashboard-data", async (req, res) => {
 // =====================================================
 // 👨‍🔧 EMPLOYEE JOB APIs
 // =====================================================
-
 app.get("/jobs", async (req, res) => {
   const employees = await Employee.find();
   res.json({
@@ -144,9 +135,8 @@ app.get("/job-done/:id", async (req, res) => {
 
 
 // =====================================================
-// 🧾 COMPLAINT API (USER)
+// 🧾 COMPLAINT API
 // =====================================================
-
 app.post("/complaint", async (req, res) => {
   await Complaint.create(req.body);
   res.send("Complaint saved");
@@ -154,8 +144,10 @@ app.post("/complaint", async (req, res) => {
 
 
 // =====================================================
-// 🚀 START SERVER
+// 🚀 START SERVER (RENDER PORT FIX)
 // =====================================================
-server.listen(5000, () => {
-  console.log("Server running on http://localhost:5000");
+const PORT = process.env.PORT || 5000;
+
+server.listen(PORT, () => {
+  console.log("Server running on port " + PORT);
 });

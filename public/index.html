@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Smart Washroom System</title>
+
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="index.css">
 </head>
@@ -21,10 +22,9 @@
   <!-- LOGIN -->
   <div id="loginBox" class="card formBox" style="display:none;">
     <h2>🔐 Login</h2>
-
     <div id="loginError" class="error"></div>
 
-    <input id="loginPhone" type="text" placeholder="📱 Mobile Number" maxlength="10" minlength="10"
+    <input id="loginPhone" type="text" placeholder="📱 Mobile Number" maxlength="10"
       oninput="this.value=this.value.replace(/[^0-9]/g,'')">
     <input id="loginPass" type="password" placeholder="🔒 Password">
 
@@ -34,8 +34,6 @@
       <option value="Admin">Admin</option>
     </select>
 
-    <div id="loginLoading" style="display:none;">Loading...</div>
-
     <button onclick="login()">Login</button>
     <button onclick="hideForms()">Back</button>
   </div>
@@ -43,11 +41,10 @@
   <!-- SIGNUP -->
   <div id="signupBox" class="card formBox" style="display:none;">
     <h2>📝 Sign Up</h2>
-
     <div id="signupError" class="error"></div>
 
     <input id="name" placeholder="Name">
-    <input id="phone" type="text" placeholder="Mobile Number" maxlength="10" minlength="10"
+    <input id="phone" type="text" placeholder="Mobile Number" maxlength="10"
       oninput="this.value=this.value.replace(/[^0-9]/g,'')">
     <input id="pass" type="password" placeholder="Password">
 
@@ -57,37 +54,38 @@
       <option value="Admin">Admin</option>
     </select>
 
-    <div id="signupLoading" style="display:none;">Creating...</div>
-
     <button onclick="signup()">Create Account</button>
     <button onclick="hideForms()">Back</button>
   </div>
 
   <script>
-    const API = "http://localhost:5000/api";
+
+    // 🌐 LIVE RENDER API
+    const API = "https://smart-washroom-system.onrender.com/api";
 
     function showLogin() {
-      document.getElementById("loginBox").style.display = "block";
-      document.getElementById("signupBox").style.display = "none";
+      loginBox.style.display = "block";
+      signupBox.style.display = "none";
     }
 
     function showSignup() {
-      document.getElementById("signupBox").style.display = "block";
-      document.getElementById("loginBox").style.display = "none";
+      signupBox.style.display = "block";
+      loginBox.style.display = "none";
     }
 
     function hideForms() {
-      document.getElementById("loginBox").style.display = "none";
-      document.getElementById("signupBox").style.display = "none";
+      loginBox.style.display = "none";
+      signupBox.style.display = "none";
     }
 
     // ================= SIGNUP =================
     async function signup() {
+
       const data = {
-        name: document.getElementById("name").value,
-        phone: document.getElementById("phone").value,   // ✔ FIXED
-        password: document.getElementById("pass").value,
-        role: document.getElementById("signupRole").value
+        name: name.value,
+        phone: phone.value,
+        password: pass.value,
+        role: signupRole.value
       };
 
       try {
@@ -104,22 +102,23 @@
           return;
         }
 
-        alert("Signup Success");
+        alert("Signup successful 🎉");
         redirect(result.role);
 
-      } catch (err) {
+      } catch {
         alert("Server error");
       }
     }
 
     // ================= LOGIN =================
     async function login() {
+
       const data = {
-        phone: document.getElementById("loginPhone").value,
-        password: document.getElementById("loginPass").value
+        phone: loginPhone.value,
+        password: loginPass.value
       };
 
-      const selectedRole = document.getElementById("loginRole").value;
+      const selectedRole = loginRole.value;
 
       try {
         const res = await fetch(`${API}/login`, {
@@ -140,19 +139,21 @@
           return;
         }
 
+        alert("Login successful 🎉");
         redirect(result.role);
 
-      } catch (err) {
+      } catch {
         alert("Server error");
       }
     }
 
     // ================= REDIRECT =================
     function redirect(role) {
-      if (role === "Admin") window.location.href = "admin.html";
-      else if (role === "Employee") window.location.href = "employee.html";
-      else window.location.href = "user.html";
+      if (role === "Admin") window.location = "admin.html";
+      else if (role === "Employee") window.location = "employee.html";
+      else window.location = "user.html";
     }
+
   </script>
 
 </body>

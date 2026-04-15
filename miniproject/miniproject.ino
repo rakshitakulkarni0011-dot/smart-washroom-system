@@ -8,7 +8,7 @@ const char* ssid = "vivo T4x 5G";
 const char* password = "Rk121212";
 
 // ⚠️ PC IP (NOT localhost)
-String server = "http://10.31.52.30:5000/save_data";
+String server = "http:// 10.31.52.30:5000/save_data";
 
 // ================= DHT =================
 #define DHTPIN D4

@@ -20,8 +20,7 @@
       color: #fff;
       padding: 15px 25px;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      justify-content: space-between
     }
 
     .container {
@@ -33,7 +32,7 @@
       padding: 20px;
       margin-top: 20px;
       border-radius: 12px;
-      box-shadow: 0 0 10px #ccc;
+      box-shadow: 0 0 10px #ccc
     }
 
     .job-card {
@@ -41,7 +40,7 @@
       padding: 15px;
       margin: 10px 0;
       border-radius: 10px;
-      border-left: 6px solid #2b7cff;
+      border-left: 6px solid #2b7cff
     }
 
     button {
@@ -51,7 +50,7 @@
       border-radius: 6px;
       background: #2b7cff;
       color: white;
-      cursor: pointer;
+      cursor: pointer
     }
 
     .callPopup {
@@ -62,7 +61,7 @@
       padding: 20px;
       border-radius: 12px;
       box-shadow: 0 0 20px #aaa;
-      display: none;
+      display: none
     }
   </style>
 
@@ -79,7 +78,7 @@
 
     <div class="section">
       <h2>📞 Incoming Job Call</h2>
-      <p id="callMsg">No incoming calls</p>
+      <p id="callMsg">Waiting for job call...</p>
     </div>
 
     <div class="section">
@@ -96,87 +95,84 @@
 
   <div class="callPopup" id="callPopup">
     <h3>📞 New Cleaning Job</h3>
-    <p id="popupText">You have a new cleaning task!</p>
+    <p>You have a new cleaning task!</p>
     <button onclick="acceptPopup()">Accept</button>
     <button onclick="declinePopup()">Decline</button>
   </div>
 
   <script>
 
-    const socket = io("http://localhost:5000");
-    let incomingPhone = null;
-    let incomingJobId = null;
+    // 🌐 LIVE SERVER URL
+    const SERVER = "https://smart-washroom-system.onrender.com";
 
-    // 📞 When backend triggers call
+    // 🔌 SOCKET CONNECT
+    const socket = io(SERVER);
+
+    // 📞 Incoming call from admin
     socket.on("call-employee", (phone) => {
-      incomingPhone = phone;
-      document.getElementById("callMsg").innerHTML =
-        "📞 Calling employee: " + phone;
+      document.getElementById("callMsg").innerHTML = "📞 Calling: " + phone;
       document.getElementById("callPopup").style.display = "block";
     });
 
-    // 🔄 Live job refresh
+    // 🔄 refresh when admin updates job
     socket.on("job-update", loadJobs);
 
+    // ================= LOAD JOBS =================
     async function loadJobs() {
-      const res = await fetch("http://localhost:5000/jobs");
-      const data = await res.json();
+      try {
+        const res = await fetch(`${SERVER}/jobs`);
+        const data = await res.json();
 
-      const assigned = document.getElementById("assignedJobs");
-      const completed = document.getElementById("completedJobs");
+        const assigned = document.getElementById("assignedJobs");
+        const completed = document.getElementById("completedJobs");
 
-      assigned.innerHTML = "";
-      completed.innerHTML = "";
+        assigned.innerHTML = "";
+        completed.innerHTML = "";
 
-      data.jobs.forEach(job => {
-        const card = `
-      <div class="job-card">
-        <h3>${job.location}</h3>
-        <p>Status: <b>${job.status}</b></p>
-        <p>Employee: ${job.employeePhone}</p>
+        data.jobs.forEach(job => {
+          const card = `
+        <div class="job-card">
+          <h3>${job.location}</h3>
+          <p>Status: <b>${job.status}</b></p>
+          <p>Employee Phone: ${job.employeePhone}</p>
 
-        ${job.status != "Completed" ? `
-        <button onclick="acceptJob('${job._id}')">Accept</button>
-        <button onclick="doneJob('${job._id}')">Done</button>
-        <button onclick="declineJob('${job._id}')">Decline</button>
-        ` : ""}
-      </div>
-    `;
+          ${job.status != "Completed" ? `
+            <button onclick="doneJob('${job._id}')">✔ Done</button>
+          ` : ""}
+        </div>
+      `;
 
-        if (job.status == "Completed")
-          completed.innerHTML += card;
-        else
-          assigned.innerHTML += card;
-      });
+          if (job.status == "Completed") completed.innerHTML += card;
+          else assigned.innerHTML += card;
+        });
+
+      } catch {
+        console.log("Server sleeping… retrying");
+      }
     }
 
+    // auto refresh every 5 sec
     loadJobs();
-    setInterval(loadJobs, 4000);
+    setInterval(loadJobs, 5000);
 
-    // BUTTON ACTIONS
-    function acceptJob(id) {
-      fetch(`http://localhost:5000/job-accepted/${id}`);
-    }
+    // ================= JOB ACTION =================
     function doneJob(id) {
-      fetch(`http://localhost:5000/job-done/${id}`);
-    }
-    function declineJob(id) {
-      fetch(`http://localhost:5000/job-declined/${id}`);
+      fetch(`${SERVER}/job-done/${id}`);
+      alert("Job marked as completed ✅");
     }
 
     // popup buttons
     function acceptPopup() {
-      document.getElementById("callPopup").style.display = "none";
-      alert("📞 You accepted the call!");
+      callPopup.style.display = "none";
+      alert("You accepted the call 📞");
     }
     function declinePopup() {
-      document.getElementById("callPopup").style.display = "none";
-      alert("📞 You declined the call!");
+      callPopup.style.display = "none";
     }
 
     // logout
     function logout() {
-      window.location.href = "index.html";
+      window.location = "index.html";
     }
 
   </script>

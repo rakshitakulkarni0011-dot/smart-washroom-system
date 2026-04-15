@@ -9,45 +9,102 @@
 
 <body>
 
-  <!-- ===== NAVBAR ===== -->
   <nav>
-    <h1>User Dashboard</h1>
-
-    <button onclick="signOut()" style="width:auto;padding:10px 20px;">
-      Sign Out
-    </button>
+    <h1>🚻 User Dashboard</h1>
+    <button onclick="signOut()" style="width:auto;padding:10px 20px;">Sign Out</button>
   </nav>
 
   <div class="container">
 
-    <!-- Buttons -->
     <div style="text-align:center; margin-top:30px;">
       <button onclick="showFeedback()">Give Feedback</button>
       <button onclick="showComplaint()">Raise Complaint</button>
     </div>
 
-    <!-- ===== FEEDBACK FORM ===== -->
+    <!-- Feedback -->
     <div id="feedbackForm" class="form-box" style="display:none;">
-      <h2>Feedback Form</h2>
+      <h2>⭐ Feedback</h2>
       <form onsubmit="submitFeedback(event)">
-        <input type="text" placeholder="Your Name" required>
-        <textarea placeholder="Write your feedback..." required></textarea>
+        <input id="fName" type="text" placeholder="Your Name" required>
+        <textarea id="fText" placeholder="Write your feedback..." required></textarea>
         <button type="submit">Submit Feedback</button>
       </form>
     </div>
 
-    <!-- ===== COMPLAINT FORM ===== -->
+    <!-- Complaint -->
     <div id="complaintForm" class="form-box" style="display:none;">
-      <h2>Complaint Form</h2>
+      <h2>⚠ Complaint</h2>
       <form onsubmit="submitComplaint(event)">
-        <input type="text" placeholder="Your Name" required>
-        <textarea placeholder="Describe your complaint..." required></textarea>
+        <input id="cName" type="text" placeholder="Your Name" required>
+        <textarea id="cText" placeholder="Describe your complaint..." required></textarea>
         <button type="submit">Submit Complaint</button>
       </form>
     </div>
 
   </div>
-  <script src="script.js"></script>
+
+  <script>
+
+    const SERVER = "https://smart-washroom-system.onrender.com";
+
+    // show forms
+    function showFeedback() {
+      feedbackForm.style.display = "block";
+      complaintForm.style.display = "none";
+    }
+
+    function showComplaint() {
+      complaintForm.style.display = "block";
+      feedbackForm.style.display = "none";
+    }
+
+    // ================= FEEDBACK =================
+    async function submitFeedback(e) {
+      e.preventDefault();
+
+      const data = {
+        name: document.getElementById("fName").value,
+        message: document.getElementById("fText").value,
+        type: "Feedback"
+      };
+
+      await fetch(`${SERVER}/complaint`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+
+      alert("✅ Feedback submitted!");
+      feedbackForm.style.display = "none";
+    }
+
+    // ================= COMPLAINT =================
+    async function submitComplaint(e) {
+      e.preventDefault();
+
+      const data = {
+        name: document.getElementById("cName").value,
+        message: document.getElementById("cText").value,
+        type: "Complaint"
+      };
+
+      await fetch(`${SERVER}/complaint`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+
+      alert("🚀 Complaint submitted!");
+      complaintForm.style.display = "none";
+    }
+
+    // logout
+    function signOut() {
+      window.location.href = "index.html";
+    }
+
+  </script>
+
 </body>
 
 </html>

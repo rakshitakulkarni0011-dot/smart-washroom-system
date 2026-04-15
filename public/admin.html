@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Smart Washroom Admin Panel</title>
+
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="admin.css">
 
@@ -14,7 +15,7 @@
 <body>
 
   <div class="topbar">
-    <h2>Smart Washroom Admin Dashboard</h2>
+    <h2>🚻 Smart Washroom Admin Dashboard</h2>
     <button class="logout" onclick="logout()">Sign Out</button>
   </div>
 
@@ -48,67 +49,71 @@
     </div>
 
     <div class="card">
-      <h3>Temperature Graph</h3>
-      <canvas id="tempChart"></canvas>
+      <h3>Temperature Graph</h3><canvas id="tempChart"></canvas>
     </div>
-
     <div class="card">
-      <h3>Humidity Graph</h3>
-      <canvas id="humChart"></canvas>
+      <h3>Humidity Graph</h3><canvas id="humChart"></canvas>
     </div>
-
     <div class="card">
-      <h3>Users Graph</h3>
-      <canvas id="userChart"></canvas>
+      <h3>Users Graph</h3><canvas id="userChart"></canvas>
     </div>
 
   </div>
 
   <script>
-    const socket = io("http://localhost:5000");
 
-    socket.on("job-update", () => fetchData());
+    // 🌐 LIVE SERVER
+    const SERVER = "https://smart-washroom-system.onrender.com";
+
+    // 🔌 SOCKET CONNECT
+    const socket = io(SERVER);
+
+    // realtime sensor update
+    socket.on("sensorUpdate", fetchData);
+    socket.on("job-update", fetchData);
 
     // ================= FETCH DASHBOARD DATA =================
     async function fetchData() {
       try {
-        const res = await fetch("http://localhost:5000/dashboard-data");
+        const res = await fetch(`${SERVER}/dashboard-data`);
         const data = await res.json();
 
-        document.getElementById("temp").innerText = data.temp;
-        document.getElementById("hum").innerText = data.hum;
-        document.getElementById("users").innerText = data.users;
-        document.getElementById("clean").innerText = data.clean;
-        document.getElementById("mq").innerText = data.mq135;
+        temp.innerText = data.temp;
+        hum.innerText = data.hum;
+        users.innerText = data.users;
+        clean.innerText = data.clean;
+        mq.innerText = data.mq135;
 
-        document.getElementById("airStatus").innerText =
-          data.mq135 > 400 ? "Bad Air" : "Good";
-        document.getElementById("airStatus").className =
-          data.mq135 > 400 ? "bad" : "ok";
+        // Air quality
+        if (data.mq135 > 400) {
+          airStatus.innerText = "Bad Air";
+          airStatus.className = "bad";
+        } else {
+          airStatus.innerText = "Good";
+          airStatus.className = "ok";
+        }
 
         checkSensorStatus(data);
         renderEmployees(data.employees);
         updateCharts(data);
 
-      } catch (err) {
-        console.log(err);
+      } catch {
+        console.log("Server sleeping… retrying");
       }
     }
 
     // ================= SENSOR STATUS =================
     function checkSensorStatus(data) {
-      document.getElementById("tStatus").className = data.temp ? "ok" : "bad";
-      document.getElementById("hStatus").className = data.hum ? "ok" : "bad";
-      document.getElementById("irStatus").className = "ok";
-      document.getElementById("mqStatus").className = data.mq135 ? "ok" : "bad";
+      tStatus.className = data.temp ? "ok" : "bad";
+      hStatus.className = data.hum ? "ok" : "bad";
+      mqStatus.className = data.mq135 ? "ok" : "bad";
     }
 
     // ================= EMPLOYEE UI =================
     function renderEmployees(list) {
-      let box = document.getElementById("empList");
-      box.innerHTML = "";
+      empList.innerHTML = "";
       list.forEach(emp => {
-        box.innerHTML += `
+        empList.innerHTML += `
       <p>${emp.name} - ${emp.performance}%</p>
       <div style="background:#ddd;border-radius:5px">
         <div style="width:${emp.performance}%;background:green;color:white;padding:3px;border-radius:5px">
@@ -121,9 +126,20 @@
     // ================= CHARTS =================
     const labels = ["1", "2", "3", "4", "5"];
 
-    let tempChart = new Chart(tempChart, { type: "line", data: { labels, datasets: [{ label: "Temp", data: [] }] } })
-    let humChart = new Chart(humChart, { type: "line", data: { labels, datasets: [{ label: "Humidity", data: [] }] } })
-    let userChart = new Chart(userChart, { type: "bar", data: { labels, datasets: [{ label: "Users", data: [] }] } })
+    const tempChart = new Chart(document.getElementById("tempChart"), {
+      type: "line",
+      data: { labels, datasets: [{ label: "Temp", data: [] }] }
+    });
+
+    const humChart = new Chart(document.getElementById("humChart"), {
+      type: "line",
+      data: { labels, datasets: [{ label: "Humidity", data: [] }] }
+    });
+
+    const userChart = new Chart(document.getElementById("userChart"), {
+      type: "bar",
+      data: { labels, datasets: [{ label: "Users", data: [] }] }
+    });
 
     function updateCharts(data) {
       tempChart.data.datasets[0].data = data.tempArray;
@@ -132,10 +148,12 @@
       tempChart.update(); humChart.update(); userChart.update();
     }
 
-    setInterval(fetchData, 3000);
+    // auto refresh
     fetchData();
+    setInterval(fetchData, 5000);
 
-    function logout() { window.location.href = "index.html"; }
+    function logout() { window.location = "index.html"; }
+
   </script>
 
 </body>
