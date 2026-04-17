@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 // ================= IMPORTS =================
 const express = require("express");
 const mongoose = require("mongoose");
@@ -13,24 +15,31 @@ const Complaint = require("./models/Complaint");
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+
+// ================= SOCKET =================
+const io = new Server(server, {
+  cors: { origin: "*" }
+});
 
 // ================= MIDDLEWARE =================
 app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
 
+console.log("MONGO_URI =", process.env.MONGO_URI);
 
-// =====================================================
-// 🌍 MONGODB ATLAS CONNECTION (RENDER READY)
-// =====================================================
+// ================= MONGODB =================
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Atlas Connected ✅"))
   .catch(err => console.log("Mongo Error:", err));
 
+// ================= SOCKET CONNECTION =================
+io.on("connection", (socket) => {
+  console.log("Client connected:", socket.id);
+});
 
 // =====================================================
-// 🔐 AUTH API
+// 🔐 AUTH
 // =====================================================
 app.post("/api/signup", async (req, res) => {
   try {
@@ -47,41 +56,30 @@ app.post("/api/login", async (req, res) => {
   res.json(user);
 });
 
-
 // =====================================================
-// 📡 ESP8266 SENSOR API
+// 📡 SENSOR DATA (ESP8266)
 // =====================================================
 app.get("/save_data", async (req, res) => {
   try {
-    const temp = parseFloat(req.query.temp);
-    const hum = parseFloat(req.query.hum);
-    const gas = parseFloat(req.query.gas);
-    const users = parseInt(req.query.users);
-    const score = parseFloat(req.query.score);
-
-    console.log("📥 Sensor Data:", req.query);
-
     const data = await Sensor.create({
-      temperature: temp,
-      humidity: hum,
-      gas: gas,
-      peopleCount: users,
-      cleanlinessScore: score
+      temperature: parseFloat(req.query.temp),
+      humidity: parseFloat(req.query.hum),
+      gas: parseFloat(req.query.gas),
+      peopleCount: parseInt(req.query.users),
+      cleanlinessScore: parseFloat(req.query.score)
     });
 
-    // 🔴 realtime update admin dashboard
     io.emit("sensorUpdate", data);
 
     res.send("Saved ✅");
   } catch (err) {
     console.log(err);
-    res.status(500).send("Error");
+    res.status(500).send("Error saving data");
   }
 });
 
-
 // =====================================================
-// 📊 ADMIN DASHBOARD DATA
+// 📊 DASHBOARD
 // =====================================================
 app.get("/dashboard-data", async (req, res) => {
   const latest = await Sensor.find().sort({ date: -1 }).limit(1);
@@ -101,18 +99,19 @@ app.get("/dashboard-data", async (req, res) => {
 
     employees: employees.map(e => ({
       name: e.name,
-      performance: e.totalTasks == 0 ? 0 :
-        Math.round((e.completedTasks / e.totalTasks) * 100)
+      performance: e.totalTasks == 0
+        ? 0
+        : Math.round((e.completedTasks / e.totalTasks) * 100)
     }))
   });
 });
 
-
 // =====================================================
-// 👨‍🔧 EMPLOYEE JOB APIs
+// 👨‍🔧 JOBS
 // =====================================================
 app.get("/jobs", async (req, res) => {
   const employees = await Employee.find();
+
   res.json({
     jobs: employees.map(e => ({
       _id: e._id,
@@ -125,29 +124,38 @@ app.get("/jobs", async (req, res) => {
 
 app.get("/job-done/:id", async (req, res) => {
   const emp = await Employee.findById(req.params.id);
+
   if (emp) {
     emp.completedTasks++;
     await emp.save();
   }
+
   io.emit("job-update", { msg: "Job completed" });
   res.send("done");
 });
 
-
 // =====================================================
-// 🧾 COMPLAINT API
+// 🧾 COMPLAINT
 // =====================================================
 app.post("/complaint", async (req, res) => {
   await Complaint.create(req.body);
   res.send("Complaint saved");
 });
 
-
 // =====================================================
-// 🚀 START SERVER (RENDER PORT FIX)
+// 🚀 SAFE SERVER START (IMPORTANT FIX)
 // =====================================================
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001; // changed safer port
 
 server.listen(PORT, () => {
   console.log("Server running on port " + PORT);
+});
+
+// ================= ERROR HANDLER =================
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.log("❌ Port already in use. Try changing PORT.");
+  } else {
+    console.log(err);
+  }
 });

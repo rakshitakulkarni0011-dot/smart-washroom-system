@@ -4,11 +4,11 @@
 #include <SoftwareSerial.h>
 
 // ================= WIFI =================
-const char* ssid = "vivo T4x 5G";
-const char* password = "Rk121212";
+const char *ssid = "vivo T4x 5G";
+const char *password = "Rk121212";
 
-// ⚠️ PC IP (NOT localhost)
-String server = "http:// 10.31.52.30:5000/save_data";
+// 🌍 CLOUD SERVER (Render)
+String server = "http://smart-washroom-system.onrender.com/save_data";
 
 // ================= DHT =================
 #define DHTPIN D4
@@ -25,7 +25,6 @@ SoftwareSerial gsm(D2, D1); // RX, TX
 // ================= VARIABLES =================
 int userCount = 0;
 int cleanScore = 100;
-
 String response = "";
 
 // ================= WIFI CONNECT =================
@@ -41,7 +40,20 @@ void connectWiFi()
   }
 
   Serial.println("\nWiFi Connected");
+  Serial.print("IP: ");
   Serial.println(WiFi.localIP());
+}
+
+// ================= RENDER WAKEUP =================
+void wakeServer()
+{
+  WiFiClient client;
+  HTTPClient http;
+
+  Serial.println("Waking cloud server...");
+  http.begin(client, "http://smart-washroom-system.onrender.com");
+  http.GET();
+  http.end();
 }
 
 // ================= SEND DATA =================
@@ -57,52 +69,59 @@ String sendToServer(float temp, float hum, int gas, int users, int score)
                "&users=" + String(users) +
                "&score=" + String(score);
 
-  Serial.println("URL: " + url);
+  Serial.println("Sending Data To Cloud...");
+  Serial.println(url);
 
   http.begin(client, url);
-  int httpCode = http.GET();
+  http.addHeader("Content-Type", "application/json");
 
+  int httpCode = http.GET();
   String payload = "";
 
   if (httpCode > 0)
   {
     payload = http.getString();
-    Serial.println("Response: " + payload);
+    Serial.println("Server Response:");
+    Serial.println(payload);
   }
   else
   {
-    Serial.println("HTTP Error");
+    Serial.print("HTTP Error: ");
+    Serial.println(httpCode);
   }
 
   http.end();
-
   return payload;
 }
 
-// ================= CALL FUNCTION =================
+// ================= GSM CALL =================
 void makeCall(String phone)
 {
   Serial.println("Calling: " + phone);
 
-  gsm.println("ATD+91" + phone + ";");
-  delay(20000);
-  gsm.println("ATH");
+  gsm.println("AT");
+  delay(1000);
+
+  gsm.println("ATD+91" + phone + ";"); // call India number
+  delay(20000);                        // call duration 20 sec
+
+  gsm.println("ATH"); // hang up
 }
 
 // ================= SETUP =================
 void setup()
 {
   Serial.begin(9600);
-
   gsm.begin(9600);
   dht.begin();
 
   pinMode(IR_PIN, INPUT);
   pinMode(RELAY_PIN, OUTPUT);
-
   digitalWrite(RELAY_PIN, LOW);
 
   connectWiFi();
+  wakeServer(); // wake Render server
+  delay(5000);
 }
 
 // ================= LOOP =================
@@ -113,47 +132,52 @@ void loop()
   int gasValue = analogRead(A0);
   int irValue = digitalRead(IR_PIN);
 
-  Serial.print("Tempearture : ");
+  Serial.println("----- SENSOR DATA -----");
+  Serial.print("Temperature: ");
   Serial.println(temp);
-   Serial.print("Humidity : ");
+  Serial.print("Humidity: ");
   Serial.println(hum);
-   Serial.print("Gas value : ");
+  Serial.print("Gas Value: ");
   Serial.println(gasValue);
-   Serial.print("User count  : ");
+  Serial.print("IR Value: ");
   Serial.println(irValue);
-
 
   // USER COUNT
   if (irValue == LOW)
   {
     userCount++;
-    Serial.println("User Entered");
+    Serial.println("User Entered 🚶");
     delay(2000);
   }
 
-  // CLEAN SCORE
+  // CLEANLINESS SCORE
   cleanScore = 100 - (gasValue / 10) - (userCount * 2);
-  if (cleanScore < 0) cleanScore = 0;
+  if (cleanScore < 0)
+    cleanScore = 0;
 
-  Serial.println("Score: " + String(cleanScore));
+  Serial.print("Clean Score: ");
+  Serial.println(cleanScore);
 
-  // ALERT CONDITION
+  // 🚨 ALERT CONDITION
   if (cleanScore < 50)
   {
+    Serial.println("⚠️ CLEANING REQUIRED");
+
     digitalWrite(RELAY_PIN, HIGH);
 
-    // SEND TO SERVER + GET RESPONSE
+    // Send to cloud
     response = sendToServer(temp, hum, gasValue, userCount, cleanScore);
 
-    // CHECK RESPONSE (employee phone)
+    // Extract phone from JSON response
     if (response.indexOf("phone") != -1)
     {
       int start = response.indexOf("phone") + 8;
       String phone = response.substring(start, start + 10);
 
-      Serial.println("Employee Phone: " + phone);
+      Serial.print("Employee Phone: ");
+      Serial.println(phone);
 
-      makeCall(phone);
+      makeCall(phone); // 📞 call employee
     }
 
     delay(15000);
@@ -163,7 +187,7 @@ void loop()
     digitalWrite(RELAY_PIN, LOW);
   }
 
-  // RESET
+  // RESET USER COUNT AFTER CLEANING
   if (cleanScore > 80)
   {
     userCount = 0;
