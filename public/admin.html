@@ -21,6 +21,7 @@
 
   <div class="container">
 
+    <!-- SENSOR STATUS -->
     <div class="card">
       <h3>Sensor Status</h3>
       <p>Temperature: <span id="tStatus" class="ok">Working</span></p>
@@ -29,6 +30,7 @@
       <p>MQ135 Sensor: <span id="mqStatus" class="ok">Working</span></p>
     </div>
 
+    <!-- LIVE READINGS -->
     <div class="card">
       <h3>Live Readings</h3>
       <p>Temperature: <span class="big" id="temp">--</span> °C</p>
@@ -37,17 +39,20 @@
       <p>Cleanliness: <span class="big" id="clean">--</span>/100</p>
     </div>
 
+    <!-- AIR QUALITY -->
     <div class="card">
       <h3>Air Quality (MQ135)</h3>
       <p>Gas Level: <span id="mq">--</span> PPM</p>
       <p>Status: <span id="airStatus" class="ok">Good</span></p>
     </div>
 
+    <!-- EMPLOYEE PERFORMANCE -->
     <div class="card">
       <h3>Employee Performance</h3>
       <div id="empList"></div>
     </div>
 
+    <!-- CHARTS -->
     <div class="card">
       <h3>Temperature Graph</h3><canvas id="tempChart"></canvas>
     </div>
@@ -61,30 +66,25 @@
   </div>
 
   <script>
-
-    // 🌐 LIVE SERVER
     const SERVER = "https://smart-washroom-system.onrender.com";
-
-    // 🔌 SOCKET CONNECT
     const socket = io(SERVER);
 
-    // realtime sensor update
     socket.on("sensorUpdate", fetchData);
     socket.on("job-update", fetchData);
 
-    // ================= FETCH DASHBOARD DATA =================
     async function fetchData() {
       try {
         const res = await fetch(`${SERVER}/dashboard-data`);
         const data = await res.json();
 
-        temp.innerText = data.temp;
-        hum.innerText = data.hum;
-        users.innerText = data.users;
-        clean.innerText = data.clean;
-        mq.innerText = data.mq135;
+        // Live values
+        temp.innerText = data.temp ?? "--";
+        hum.innerText = data.hum ?? "--";
+        users.innerText = data.users ?? "--";
+        clean.innerText = data.clean ?? "--";
+        mq.innerText = data.mq135 ?? "--";
 
-        // Air quality
+        // Air quality status
         if (data.mq135 > 400) {
           airStatus.innerText = "Bad Air";
           airStatus.className = "bad";
@@ -97,43 +97,67 @@
         renderEmployees(data.employees);
         updateCharts(data);
 
-      } catch {
+      } catch (err) {
         console.log("Server sleeping… retrying");
       }
     }
 
-    // ================= SENSOR STATUS =================
+    /* SENSOR STATUS */
     function checkSensorStatus(data) {
       tStatus.className = data.temp ? "ok" : "bad";
       hStatus.className = data.hum ? "ok" : "bad";
       mqStatus.className = data.mq135 ? "ok" : "bad";
+      irStatus.className = data.users ? "ok" : "bad";
     }
 
-    // ================= EMPLOYEE UI =================
+    /* EMPLOYEE PERFORMANCE FIXED */
     function renderEmployees(list) {
       empList.innerHTML = "";
+
+      if (!list || list.length === 0) {
+        empList.innerHTML = "<p>No employee data available</p>";
+        return;
+      }
+
+      empList.innerHTML += `<p><b>Total Employees:</b> ${list.length}</p>`;
+
       list.forEach(emp => {
-        empList.innerHTML += `
-      <p>${emp.name} - ${emp.performance}%</p>
-      <div style="background:#ddd;border-radius:5px">
-        <div style="width:${emp.performance}%;background:green;color:white;padding:3px;border-radius:5px">
-          ${emp.performance}%
+        let perf = Math.max(0, Math.min(100, emp.performance));
+
+        let color = "red";
+        if (perf >= 70) color = "green";
+        else if (perf >= 40) color = "orange";
+
+        const row = document.createElement("div");
+        row.innerHTML = `
+      <p>${emp.name} - ${perf}%</p>
+      <div style="background:#ddd;border-radius:6px;margin-bottom:10px">
+        <div style="
+          width:${perf}%;
+          background:${color};
+          color:white;
+          padding:4px;
+          border-radius:6px;
+          text-align:center;
+          transition:0.5s">
+          ${perf}%
         </div>
       </div>`;
+        empList.appendChild(row);
       });
     }
 
-    // ================= CHARTS =================
+    /* CHARTS */
     const labels = ["1", "2", "3", "4", "5"];
 
-    const tempChart = new Chart(document.getElementById("tempChart"), {
+    const tempChart = new Chart(tempChartEl = document.getElementById("tempChart"), {
       type: "line",
-      data: { labels, datasets: [{ label: "Temp", data: [] }] }
+      data: { labels, datasets: [{ label: "Temp °C", data: [] }] }
     });
 
     const humChart = new Chart(document.getElementById("humChart"), {
       type: "line",
-      data: { labels, datasets: [{ label: "Humidity", data: [] }] }
+      data: { labels, datasets: [{ label: "Humidity %", data: [] }] }
     });
 
     const userChart = new Chart(document.getElementById("userChart"), {
@@ -142,18 +166,21 @@
     });
 
     function updateCharts(data) {
+      if (!data.tempArray) return;
+
       tempChart.data.datasets[0].data = data.tempArray;
       humChart.data.datasets[0].data = data.humArray;
       userChart.data.datasets[0].data = data.userArray;
-      tempChart.update(); humChart.update(); userChart.update();
+
+      tempChart.update();
+      humChart.update();
+      userChart.update();
     }
 
-    // auto refresh
     fetchData();
     setInterval(fetchData, 5000);
 
     function logout() { window.location = "index.html"; }
-
   </script>
 
 </body>

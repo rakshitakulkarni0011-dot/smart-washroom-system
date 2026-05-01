@@ -1,477 +1,213 @@
-/* admin.css - Updated with Sign Out Confirmation Modal */
+< !DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Smart Washroom Admin Panel</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="admin.css"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"><script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script><script src="https://cdn.jsdelivr.net/npm/chart.js"></script></head><body>< !-- LOGOUT MODAL --><div id="logoutModal"><div class="modal-content"><h3>🚪 Sign Out?</h3><p>Are you sure you want to leave the admin dashboard?</p><div class="modal-buttons"><button class="confirm-logout" onclick="confirmLogout()">Yes,
+Sign Out</button><button class="cancel-logout" onclick="closeModal()">Cancel</button></div></div></div><div class="topbar"><h2>🚻 Smart Washroom Admin Dashboard</h2><button class="logout" onclick="showLogoutModal()">Sign Out</button></div><div class="container">< !-- SENSOR STATUS --><div class="card"><h3>📡 Sensor Status</h3><div class="status-grid"><p>Temperature: <span id="tStatus" class="status ok">Working</span></p><p>Humidity: <span id="hStatus" class="status ok">Working</span></p><p>IR Sensor: <span id="irStatus" class="status ok">Working</span></p><p>MQ135 Sensor: <span id="mqStatus" class="status ok">Working</span></p></div></div>< !-- LIVE READINGS --><div class="card"><h3>📊 Live Readings</h3><div class="live-grid"><div class="reading-item"><p>Temp</p><span class="big" id="temp">--</span>°C </div><div class="reading-item"><p>Humidity</p><span class="big" id="hum">--</span>% </div><div class="reading-item"><p>Users</p><span class="big" id="users">--</span></div><div class="reading-item"><p>Cleanliness</p><span class="big" id="clean">--</span>/100 </div></div></div>< !-- AIR QUALITY --><div class="card"><h3>🌬️ Air Quality (MQ135)</h3><div class="mq-box"><p>Gas Level: <span id="mq">--</span>PPM</p><p>Status: <span id="airStatus" class="status ok">Good</span></p></div></div>< !-- EMPLOYEE PERFORMANCE --><div class="card full-width"><h3>👥 Employee Performance</h3><div id="empList"></div></div>< !-- CHARTS --><div class="card chart-card"><h3>🌡️ Temperature Graph</h3><canvas id="tempChart"></canvas></div><div class="card chart-card"><h3>💧 Humidity Graph</h3><canvas id="humChart"></canvas></div><div class="card chart-card full-width"><h3>👤 Users Graph</h3><canvas id="userChart"></canvas></div></div><script>const SERVER="https://smart-washroom-system.onrender.com";
+const socket=io(SERVER);
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+let tempChartEl,
+humChartEl,
+userChartEl;
 
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: white;
-  color: #333;
-  line-height: 1.6;
-}
+socket.on("sensorUpdate", fetchData);
+socket.on("job-update", fetchData);
 
-/* TOP BAR */
-.topbar {
-  background: linear-gradient(135deg, #007bff, #0056b3);
-  color: white;
-  padding: 1.5rem 2rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 4px 20px rgba(0, 123, 255, 0.3);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
+async function fetchData() {
+  try {
+    const res=await fetch(`$ {
+        SERVER
+      }
 
-.topbar h2 {
-  font-size: 2rem;
-  font-weight: 600;
-  margin: 0;
-}
+      /dashboard-data`);
+    const data=await res.json();
 
-.logout {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  padding: 0.8rem 2rem;
-  border-radius: 25px;
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
+    // Live values
+    document.getElementById('temp').innerText=data.temp ?? "--";
+    document.getElementById('hum').innerText=data.hum ?? "--";
+    document.getElementById('users').innerText=data.users ?? "--";
+    document.getElementById('clean').innerText=data.clean ?? "--";
+    document.getElementById('mq').innerText=data.mq135 ?? "--";
 
-.logout:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-}
+    // Air quality status
+    const airStatusEl=document.getElementById('airStatus');
 
-/* SIGN OUT MODAL */
-#logoutModal {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  z-index: 1000;
-  backdrop-filter: blur(5px);
-}
+    if (data.mq135 > 400) {
+      airStatusEl.innerText="Poor";
+      airStatusEl.className="status bad";
+    }
 
-.modal-content {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: white;
-  padding: 3rem 2.5rem;
-  border-radius: 25px;
-  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.4);
-  text-align: center;
-  max-width: 450px;
-  width: 90%;
-  animation: modalSlideIn 0.4s ease;
-}
+    else {
+      airStatusEl.innerText="Good";
+      airStatusEl.className="status ok";
+    }
 
-@keyframes modalSlideIn {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.7);
+    checkSensorStatus(data);
+    renderEmployees(data.employees);
+    updateCharts(data);
+
   }
 
-  to {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+  catch (err) {
+    console.log("Server sleeping… retrying");
   }
-}
-
-.modal-content h3 {
-  color: #dc3545;
-  font-size: 2rem;
-  margin-bottom: 1rem;
-  font-weight: 700;
-}
-
-.modal-content p {
-  font-size: 1.2rem;
-  color: #555;
-  margin-bottom: 2.5rem;
-  line-height: 1.6;
-}
-
-.modal-buttons {
-  display: flex;
-  gap: 1.5rem;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.confirm-logout {
-  background: linear-gradient(135deg, #dc3545, #c82333);
-  color: white;
-  border: none;
-  padding: 1rem 2.5rem;
-  border-radius: 25px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.confirm-logout:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 15px 35px rgba(220, 53, 69, 0.5);
-}
-
-.cancel-logout {
-  background: linear-gradient(135deg, #6c757d, #5a6268);
-  color: white;
-  border: none;
-  padding: 1rem 2.5rem;
-  border-radius: 25px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 8px 25px rgba(108, 117, 125, 0.4);
-}
-
-.cancel-logout:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 15px 35px rgba(108, 117, 125, 0.5);
-  background: linear-gradient(135deg, #5a6268, #495057);
-}
-
-@media (max-width: 480px) {
-  .modal-buttons {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .confirm-logout,
-  .cancel-logout {
-    width: 100%;
-    max-width: 250px;
-  }
-}
-
-/* MAIN CONTAINER */
-.container {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 2.5rem;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-  gap: 2.5rem;
-}
-
-/* CARDS */
-.card {
-  background: white;
-  border-radius: 20px;
-  padding: 2rem;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
-  border: 1px solid #f8f9fa;
-  transition: all 0.4s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #007bff, #0056b3, #007bff);
-}
-
-.card:hover {
-  transform: translateY(-10px);
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15);
-}
-
-.card h3 {
-  color: #007bff;
-  font-size: 1.5rem;
-  margin-bottom: 1.5rem;
-  font-weight: 600;
-  border-bottom: 3px solid #e3f2fd;
-  padding-bottom: 1rem;
 }
 
 /* SENSOR STATUS */
-#tStatus,
-#hStatus,
-#irStatus,
-#mqStatus,
-#airStatus {
-  font-weight: 700;
-  padding: 0.5rem 1rem;
-  border-radius: 25px;
-  display: inline-block;
-  font-size: 0.95rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.ok {
-  background: linear-gradient(135deg, #d4edda, #c8e6c9);
-  color: #155724;
-  border: 2px solid #c3e6cb;
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-}
-
-.bad {
-  background: linear-gradient(135deg, #f8d7da, #ffcdd2);
-  color: #721c24;
-  border: 2px solid #f5c6cb;
-  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-
-  0%,
-  100% {
-    transform: scale(1);
-  }
-
-  50% {
-    transform: scale(1.05);
-  }
-}
-
-/* LIVE DATA */
-.big {
-  font-size: 2.8rem;
-  font-weight: 800;
-  color: #007bff;
-  font-family: 'Courier New', monospace;
-  text-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
-}
-
-/* MQ135 AIR QUALITY */
-.mq-box {
-  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-  padding: 1.5rem;
-  border-radius: 15px;
-  margin-bottom: 1.5rem;
-  border-left: 6px solid #007bff;
-  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.05);
-}
-
-#mq {
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: #28a745;
-  text-shadow: 0 1px 4px rgba(40, 167, 69, 0.3);
+function checkSensorStatus(data) {
+  document.getElementById('tStatus').className=data.temp ? "status ok": "status bad";
+  document.getElementById('hStatus').className=data.hum ? "status ok": "status bad";
+  document.getElementById('mqStatus').className=data.mq135 ? "status ok": "status bad";
+  document.getElementById('irStatus').className=data.users ? "status ok": "status bad";
 }
 
 /* EMPLOYEE PERFORMANCE */
-#empList p {
-  margin-bottom: 1.5rem;
-  font-weight: 600;
-  font-size: 1.1rem;
-  color: #333;
+function renderEmployees(list) {
+  const empList=document.getElementById('empList');
+  empList.innerHTML="";
+
+  if ( !list || list.length===0) {
+    empList.innerHTML="<p class='no-data'>No employee data available</p>";
+    return;
+  }
+
+  empList.innerHTML+=`<p class='total-employees'><b>Total Employees:</b>$ {
+    list.length
+  }
+
+  </p>`;
+
+  list.forEach(emp=> {
+      let perf=Math.max(0, Math.min(100, emp.performance));
+
+      let colorClass="perf-low";
+      if (perf >=70) colorClass="perf-high";
+      else if (perf >=40) colorClass="perf-medium";
+
+      const row=document.createElement("div");
+      row.className="emp-row";
+
+      row.innerHTML=` <div class="emp-info" > <span class="emp-name" >$ {
+        emp.name
+      }
+
+      </span> <span class="emp-score" >$ {
+        perf
+      }
+
+      %</span> </div> <div class="progress-container" > <div class="progress-bar ${colorClass}" style="width: ${perf}%" ></div> </div>`;
+      empList.appendChild(row);
+    });
 }
 
-#empList>div {
-  background: #e9ecef;
-  border-radius: 12px;
-  height: 12px;
-  overflow: hidden;
-  margin-top: 0.5rem;
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.1);
+/* CHARTS */
+const labels=["1",
+"2",
+"3",
+"4",
+"5"];
+
+document.addEventListener('DOMContentLoaded', function() {
+    tempChartEl=document.getElementById("tempChart");
+    humChartEl=document.getElementById("humChart");
+    userChartEl=document.getElementById("userChart");
+
+    const tempChart=new Chart(tempChartEl, {
+
+      type: "line",
+      data: {
+        labels, datasets: [ {
+          label: "Temp °C", data: [], borderColor: '#ff5722', backgroundColor: 'rgba(255, 87, 34, 0.1)', tension: 0.4
+        }
+
+        ]
+      }
+
+      ,
+      options: {
+        responsive: true, maintainAspectRatio: false, scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    });
+
+  const humChart=new Chart(humChartEl, {
+
+    type: "line",
+    data: {
+      labels, datasets: [ {
+        label: "Humidity %", data: [], borderColor: '#2196f3', backgroundColor: 'rgba(33, 150, 243, 0.1)', tension: 0.4
+      }
+
+      ]
+    }
+
+    ,
+    options: {
+      responsive: true, maintainAspectRatio: false, scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+
+const userChart=new Chart(userChartEl, {
+
+  type: "bar",
+  data: {
+    labels, datasets: [ {
+      label: "Users", data: [], backgroundColor: '#4caf50'
+    }
+
+    ]
+  }
+
+  ,
+  options: {
+    responsive: true, maintainAspectRatio: false, scales: {
+      y: {
+        beginAtZero: true
+      }
+    }
+  }
+});
+});
+
+function updateCharts(data) {
+  if( !data.tempArray) return;
+
+  tempChartEl.ctx.chart.data.datasets[0].data=data.tempArray;
+  humChartEl.ctx.chart.data.datasets[0].data=data.humArray;
+  userChartEl.ctx.chart.data.datasets[0].data=data.userArray;
+
+  tempChartEl.ctx.chart.update('none');
+  humChartEl.ctx.chart.update('none');
+  userChartEl.ctx.chart.update('none');
 }
 
-#empList>div>div {
-  height: 100%;
-  background: linear-gradient(90deg, #28a745, #4caf50);
-  color: white;
-  padding: 0.3rem 0.8rem;
-  font-size: 0.85rem;
-  font-weight: 700;
-  border-radius: 12px;
-  transition: all 0.5s ease;
-  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
-  white-space: nowrap;
+// MODAL FUNCTIONS
+function showLogoutModal() {
+  document.getElementById('logoutModal').style.display='block';
+  document.body.style.overflow='hidden';
 }
 
-/* CHARTS - BOLD BLACK */
-#tempChart,
-#humChart,
-#userChart {
-  max-height: 350px !important;
-  width: 100% !important;
+function closeModal() {
+  document.getElementById('logoutModal').style.display='none';
+  document.body.style.overflow='auto';
 }
 
-canvas {
-  max-height: 300px !important;
+function confirmLogout() {
+  window.location.href="index.html";
 }
 
-/* Chart.js BOLD BLACK text override */
-.chartjs-render-monitor * {
-  font-weight: 700 !important;
-  color: #000 !important;
-  font-family: 'Segoe UI', sans-serif !important;
-  font-size: 13px !important;
-}
+// Close modal on outside click
+window.onclick=function(event) {
+  const modal=document.getElementById('logoutModal');
 
-#tempChart {
-  border-top: 4px solid #ff5722;
-}
-
-#humChart {
-  border-top: 4px solid #2196f3;
-}
-
-#userChart {
-  border-top: 4px solid #4caf50;
-}
-
-/* RESPONSIVE DESIGN */
-@media (max-width: 1200px) {
-  .container {
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 2rem;
-    padding: 2rem 1.5rem;
+  if (event.target===modal) {
+    closeModal();
   }
 }
 
-@media (max-width: 768px) {
-  .topbar {
-    padding: 1.2rem;
-    flex-direction: column;
-    gap: 1rem;
-    text-align: center;
-  }
-
-  .topbar h2 {
-    font-size: 1.6rem;
-  }
-
-  .container {
-    grid-template-columns: 1fr;
-    padding: 1.5rem 1rem;
-    gap: 1.5rem;
-  }
-
-  .card {
-    padding: 1.5rem;
-  }
-
-  .big {
-    font-size: 2.2rem;
-  }
-
-  canvas {
-    max-height: 250px !important;
-  }
-}
-
-@media (max-width: 480px) {
-  .topbar h2 {
-    font-size: 1.4rem;
-  }
-
-  .big {
-    font-size: 1.8rem;
-  }
-
-  .card {
-    padding: 1.2rem;
-  }
-
-  .card h3 {
-    font-size: 1.3rem;
-  }
-}
-
-/* ANIMATIONS */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(40px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.card {
-  animation: fadeInUp 0.7s ease forwards;
-}
-
-.card:nth-child(1) {
-  animation-delay: 0.1s;
-}
-
-.card:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.card:nth-child(3) {
-  animation-delay: 0.3s;
-}
-
-.card:nth-child(4) {
-  animation-delay: 0.4s;
-}
-
-.card:nth-child(5) {
-  animation-delay: 0.5s;
-}
-
-.card:nth-child(6) {
-  animation-delay: 0.6s;
-}
-
-.card:nth-child(7) {
-  animation-delay: 0.7s;
-}
-
-@keyframes slideDown {
-  from {
-    transform: translateY(-100%);
-  }
-
-  to {
-    transform: translateY(0);
-  }
-}
-
-.topbar {
-  animation: slideDown 0.6s ease;
-}
-
-/* CUSTOM SCROLLBAR */
-::-webkit-scrollbar {
-  width: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #007bff, #0056b3);
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #0056b3, #004085);
-}
+fetchData();
+setInterval(fetchData, 5000);
+</script></body></html>

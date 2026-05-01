@@ -1,4 +1,4 @@
-/* user.css - User Dashboard Styles */
+/* user.css - User Dashboard Styles (Responsive & Clean) */
 
 * {
   margin: 0;
@@ -8,9 +8,10 @@
 
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: white;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   color: #333;
   line-height: 1.6;
+  min-height: 100vh;
 }
 
 /* NAVBAR */
@@ -25,10 +26,11 @@ nav {
   position: sticky;
   top: 0;
   z-index: 100;
+  animation: slideDown 0.5s ease;
 }
 
 nav h1 {
-  font-size: 1.8rem;
+  font-size: clamp(1.5rem, 4vw, 1.8rem);
   font-weight: 600;
   margin: 0;
 }
@@ -58,13 +60,13 @@ nav button:hover {
   padding: 3rem 2rem;
 }
 
-/* ACTION BUTTONS */
-.container>div[style*="text-align:center"] {
+/* ACTION BUTTONS SECTION */
+.action-buttons {
   text-align: center;
   margin: 2rem 0 3rem 0;
 }
 
-.container button {
+.action-buttons button {
   background: linear-gradient(135deg, #28a745, #20c997);
   color: white;
   border: none;
@@ -80,13 +82,13 @@ nav button:hover {
   letter-spacing: 0.5px;
 }
 
-.container button:hover {
+.action-buttons button:hover {
   transform: translateY(-5px);
   box-shadow: 0 15px 35px rgba(40, 167, 69, 0.4);
   background: linear-gradient(135deg, #20c997, #28a745);
 }
 
-.container button:active {
+.action-buttons button:active {
   transform: translateY(-2px);
 }
 
@@ -101,6 +103,11 @@ nav button:hover {
   margin: 0 auto 2rem auto;
   transition: all 0.4s ease;
   animation: slideIn 0.6s ease;
+  display: none;
+}
+
+.form-box.active {
+  display: block;
 }
 
 .form-box:hover {
@@ -110,7 +117,7 @@ nav button:hover {
 
 .form-box h2 {
   color: #007bff;
-  font-size: 2.2rem;
+  font-size: clamp(1.8rem, 5vw, 2.2rem);
   text-align: center;
   margin-bottom: 2.5rem;
   font-weight: 700;
@@ -184,15 +191,11 @@ nav button:hover {
     text-align: center;
   }
 
-  nav h1 {
-    font-size: 1.5rem;
-  }
-
   .container {
     padding: 2rem 1rem;
   }
 
-  .container button {
+  .action-buttons button {
     display: block;
     width: 250px;
     margin: 1rem auto;
@@ -202,26 +205,18 @@ nav button:hover {
     padding: 2rem 1.5rem;
     margin: 1rem;
   }
-
-  .form-box h2 {
-    font-size: 1.8rem;
-  }
 }
 
 @media (max-width: 480px) {
-  nav h1 {
-    font-size: 1.3rem;
+  nav {
+    padding: 1rem;
   }
 
   .form-box {
     padding: 1.5rem 1.2rem;
   }
 
-  .form-box h2 {
-    font-size: 1.6rem;
-  }
-
-  .container button {
+  .action-buttons button {
     width: 220px;
     font-size: 1rem;
   }
@@ -240,26 +235,6 @@ nav button:hover {
   }
 }
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(40px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.form-box {
-  animation: fadeInUp 0.6s ease forwards;
-}
-
-nav {
-  animation: slideDown 0.5s ease;
-}
-
 @keyframes slideDown {
   from {
     transform: translateY(-100%);
@@ -270,10 +245,15 @@ nav {
   }
 }
 
-/* SUCCESS MESSAGE STYLING */
-@media (prefers-reduced-motion: no-preference) {
-  .form-box {
-    animation: slideIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -293,4 +273,13 @@ nav {
 
 ::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(135deg, #0056b3, #004085);
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
