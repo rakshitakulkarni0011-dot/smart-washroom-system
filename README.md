@@ -30,4 +30,4 @@ An IoT + Web based system to monitor washroom usage, cleanliness and complaints 
    node server.js
 
 3. Open in browser
-   http://localhost:5000
+   https://smart-washroom-system.onrender.com

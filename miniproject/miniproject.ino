@@ -1,5 +1,6 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include <DHT.h>
 #include <SoftwareSerial.h>
 
@@ -7,8 +8,8 @@
 const char *ssid = "vivo T4x 5G";
 const char *password = "Rk121212";
 
-// 🌍 CLOUD SERVER (Render)
-String server = "http://smart-washroom-system.onrender.com/save_data";
+// 🌍 CLOUD SERVER
+String server = "https://smart-washroom-system.onrender.com/save_data";
 
 // ================= DHT =================
 #define DHTPIN D4
@@ -26,6 +27,7 @@ SoftwareSerial gsm(D2, D1); // RX, TX
 int userCount = 0;
 int cleanScore = 100;
 String response = "";
+int lastIRState = HIGH;
 
 // ================= WIFI CONNECT =================
 void connectWiFi()
@@ -39,7 +41,7 @@ void connectWiFi()
     Serial.print(".");
   }
 
-  Serial.println("\nWiFi Connected");
+  Serial.println("\n✅ WiFi Connected");
   Serial.print("IP: ");
   Serial.println(WiFi.localIP());
 }
@@ -47,11 +49,12 @@ void connectWiFi()
 // ================= RENDER WAKEUP =================
 void wakeServer()
 {
-  WiFiClient client;
+  WiFiClientSecure client;
+  client.setInsecure();
   HTTPClient http;
 
   Serial.println("Waking cloud server...");
-  http.begin(client, "http://smart-washroom-system.onrender.com");
+  http.begin(client, "https://smart-washroom-system.onrender.com");
   http.GET();
   http.end();
 }
@@ -59,7 +62,8 @@ void wakeServer()
 // ================= SEND DATA =================
 String sendToServer(float temp, float hum, int gas, int users, int score)
 {
-  WiFiClient client;
+  WiFiClientSecure client;
+  client.setInsecure();
   HTTPClient http;
 
   String url = server +
@@ -69,24 +73,23 @@ String sendToServer(float temp, float hum, int gas, int users, int score)
                "&users=" + String(users) +
                "&score=" + String(score);
 
-  Serial.println("Sending Data To Cloud...");
+  Serial.println("\n📡 Sending Data...");
   Serial.println(url);
 
   http.begin(client, url);
-  http.addHeader("Content-Type", "application/json");
-
   int httpCode = http.GET();
+
   String payload = "";
 
   if (httpCode > 0)
   {
     payload = http.getString();
-    Serial.println("Server Response:");
+    Serial.println("✅ Response:");
     Serial.println(payload);
   }
   else
   {
-    Serial.print("HTTP Error: ");
+    Serial.print("❌ HTTP Error: ");
     Serial.println(httpCode);
   }
 
@@ -97,15 +100,29 @@ String sendToServer(float temp, float hum, int gas, int users, int score)
 // ================= GSM CALL =================
 void makeCall(String phone)
 {
-  Serial.println("Calling: " + phone);
+  Serial.println("📞 Calling: " + phone);
 
   gsm.println("AT");
   delay(1000);
 
-  gsm.println("ATD+91" + phone + ";"); // call India number
-  delay(20000);                        // call duration 20 sec
+  gsm.println("ATD+91" + phone + ";");
+  delay(20000);
 
-  gsm.println("ATH"); // hang up
+  gsm.println("ATH");
+}
+
+// ================= EXTRACT PHONE =================
+String extractPhone(String response)
+{
+  int index = response.indexOf("\"phone\":\"");
+
+  if (index != -1)
+  {
+    index += 9;
+    return response.substring(index, index + 10);
+  }
+
+  return "";
 }
 
 // ================= SETUP =================
@@ -120,64 +137,66 @@ void setup()
   digitalWrite(RELAY_PIN, LOW);
 
   connectWiFi();
-  wakeServer(); // wake Render server
+  wakeServer();
   delay(5000);
 }
 
 // ================= LOOP =================
 void loop()
 {
+  // 🔁 Reconnect WiFi if disconnected
+  if (WiFi.status() != WL_CONNECTED)
+  {
+    Serial.println("⚠️ WiFi Lost! Reconnecting...");
+    connectWiFi();
+  }
+
   float temp = dht.readTemperature();
   float hum = dht.readHumidity();
   int gasValue = analogRead(A0);
   int irValue = digitalRead(IR_PIN);
 
-  Serial.println("----- SENSOR DATA -----");
-  Serial.print("Temperature: ");
-  Serial.println(temp);
-  Serial.print("Humidity: ");
-  Serial.println(hum);
-  Serial.print("Gas Value: ");
-  Serial.println(gasValue);
-  Serial.print("IR Value: ");
-  Serial.println(irValue);
+  Serial.println("\n----- SENSOR DATA -----");
+  Serial.println("Temp: " + String(temp));
+  Serial.println("Hum: " + String(hum));
+  Serial.println("Gas: " + String(gasValue));
+  Serial.println("IR: " + String(irValue));
 
-  // USER COUNT
-  if (irValue == LOW)
+  // 🚶 USER COUNT (FIXED)
+  if (irValue == LOW && lastIRState == HIGH)
   {
     userCount++;
-    Serial.println("User Entered 🚶");
-    delay(2000);
+    Serial.println("🚶 User Entered");
+    delay(500);
   }
+  lastIRState = irValue;
 
-  // CLEANLINESS SCORE
-  cleanScore = 100 - (gasValue / 10) - (userCount * 2);
+  // 🧼 CLEAN SCORE (IMPROVED)
+  cleanScore = 100 - (gasValue / 15) - (userCount * 3);
   if (cleanScore < 0)
     cleanScore = 0;
 
-  Serial.print("Clean Score: ");
-  Serial.println(cleanScore);
+  Serial.println("Clean Score: " + String(cleanScore));
 
-  // 🚨 ALERT CONDITION
+  // 🚨 ALERT
   if (cleanScore < 50)
   {
     Serial.println("⚠️ CLEANING REQUIRED");
-
     digitalWrite(RELAY_PIN, HIGH);
 
-    // Send to cloud
     response = sendToServer(temp, hum, gasValue, userCount, cleanScore);
 
-    // Extract phone from JSON response
-    if (response.indexOf("phone") != -1)
+    // 📲 GET PHONE
+    String phone = extractPhone(response);
+
+    if (phone != "")
     {
-      int start = response.indexOf("phone") + 8;
-      String phone = response.substring(start, start + 10);
-
-      Serial.print("Employee Phone: ");
-      Serial.println(phone);
-
-      makeCall(phone); // 📞 call employee
+      Serial.println("📲 Phone: " + phone);
+      makeCall(phone);
+    }
+    else
+    {
+      Serial.println("❌ No phone received");
     }
 
     delay(15000);
@@ -187,7 +206,7 @@ void loop()
     digitalWrite(RELAY_PIN, LOW);
   }
 
-  // RESET USER COUNT AFTER CLEANING
+  // 🔄 RESET USERS
   if (cleanScore > 80)
   {
     userCount = 0;

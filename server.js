@@ -71,13 +71,28 @@ app.get("/save_data", async (req, res) => {
 
     io.emit("sensorUpdate", data);
 
-    res.send("Saved ✅");
+    // 🔥 FIND AVAILABLE EMPLOYEE
+    const employee = await Employee.findOne({ available: true });
+
+    if (employee) {
+
+      // 🔔 Notify frontend (Employee.html)
+      io.emit("call-employee", employee.phone);
+
+      // 📲 SEND PHONE TO ESP8266
+      return res.json({
+        status: "alert",
+        phone: employee.phone
+      });
+    }
+
+    res.json({ status: "no_employee" });
+
   } catch (err) {
     console.log(err);
     res.status(500).send("Error saving data");
   }
 });
-
 // =====================================================
 // 📊 DASHBOARD
 // =====================================================
